@@ -61,7 +61,6 @@ def test_finetuned_dinov2(
     # convert embeddings to tensor
     embeddings = torch.cat(all_embeddings, dim=0)  # shape: [len(df), grid_size**2, 768]
     logits = all_logits
-    # logits = [logits.cpu().tolist() for logits in all_logits]
 
     if use_grid:
         embeddings = embeddings.view(-1, grid_size**2, 768)
