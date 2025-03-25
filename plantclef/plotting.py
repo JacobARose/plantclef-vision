@@ -410,7 +410,6 @@ def plot_faiss_classifications(
 
     # Extract data from test DataFrame
     image_data = faiss_df["data"].iloc[0]
-    image_name = faiss_df["image_name"].iloc[0]
 
     # Convert binary image to PIL Image
     image = crop_image_square(deserialize_image(image_data))
@@ -441,24 +440,6 @@ def plot_faiss_classifications(
 
     if num_tiles == 1:
         axes = [axes]  # Ensure axes is iterable when only one image
-
-    # Set main titles for left and right plots
-    fig.text(
-        0.25,
-        0.95,
-        f"Image Tiles: {image_name}",
-        fontsize=18,
-        fontweight="bold",
-        ha="center",
-    )
-    fig.text(
-        0.75,
-        0.95,
-        "Top-K FAISS Predictions",
-        fontsize=18,
-        fontweight="bold",
-        ha="center",
-    )
 
     # Loop over image tiles and corresponding FAISS matches
     for i, (tile, matches, species) in enumerate(
