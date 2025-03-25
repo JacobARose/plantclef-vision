@@ -5,7 +5,7 @@ import pandas as pd
 from plantclef.config import get_device
 
 
-class FAISSClassifier:
+class FaissClassifier:
     def __init__(self, train_df: pd.DataFrame):
         """
         :param train_df: DataFrame with columns ["species_id", "embeddings"]

@@ -5,6 +5,8 @@
 PyTorch webinar on using the **DINOv2** model for multi-label plant species classification.
 This project is part of the [**PlantCLEF @ LifeCLEF & CVPR-FGVC**](https://www.kaggle.com/competitions/plantclef-2025) competition on Kaggle.
 
+![diagram](./images/pytorch-webinar-diagram.png)
+
 ## Quickstart Guide
 
 ### 1. Clone the repository
