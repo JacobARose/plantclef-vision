@@ -17,7 +17,7 @@ class FaissClassifier:
         """Builds the FAISS index from the training data."""
 
         # store class labels
-        idx2cls = train_df["image_name"].values
+        idx2cls = train_df["species_id"].values
         # convert embeddings to tensor
         embs_array = np.array(train_df["embeddings"].tolist(), dtype=np.float32)
         embs = torch.tensor(embs_array, device=self.device)

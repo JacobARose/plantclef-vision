@@ -424,8 +424,8 @@ def plot_faiss_classifications(
     for pred_list in faiss_preds:
         tile_matches = []
         species_matches = []
-        for img_name in pred_list:  # Iterate over the k predictions for each tile
-            match = embs_df[embs_df["image_name"] == img_name]
+        for species_id in pred_list:  # Iterate over the k predictions for each tile
+            match = embs_df[embs_df["species_id"] == species_id]
             species_matches.append(match["species_id"].iloc[0])
             if not match.empty:
                 faiss_img = crop_image_square(deserialize_image(match.iloc[0]["data"]))
