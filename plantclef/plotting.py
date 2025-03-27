@@ -425,6 +425,8 @@ def plot_faiss_classifications(
         tile_matches = []
         species_matches = []
         for img_name in pred_list:  # Iterate over the k predictions for each tile
+            # match = embs_df[embs_df["species_id"] == species_id]
+            # species_matches.append(match["species_id"].iloc[0])
             match = embs_df[embs_df["image_name"] == img_name]
             species_matches.append(match["species_id"].iloc[0])
             if not match.empty:
