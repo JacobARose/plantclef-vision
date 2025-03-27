@@ -5,7 +5,7 @@
 **PyTorch webinar** on using the **DINOv2** model for multi-label plant species classification in the [**PlantCLEF @ LifeCLEF & CVPR-FGVC**](https://www.kaggle.com/competitions/plantclef-2025) competition on Kaggle.
 This session will demonstrate how **self-supervised Vision Transformers (ViTs)** and **similarity search techniques** can classify plant species efficiently at scale.
 
-![diagram](./images/pytorch-webinar-diagram.png)
+![diagram](./images/pytorch-webinar-diagram-2.png)
 
 This webinar is made possible through the support of the [**PyTorch Foundation**](https://pytorch.org/foundation) and [**Intel AI**](https://www.intel.la/content/www/xl/es/artificial-intelligence/overview1.html).
 
