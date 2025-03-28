@@ -9,6 +9,24 @@ This session will demonstrate how **self-supervised Vision Transformers (ViTs)**
 
 This webinar is made possible through the support of the [**PyTorch Foundation**](https://pytorch.org/foundation) and [**Intel AI**](https://www.intel.la/content/www/xl/es/artificial-intelligence/overview1.html).
 
+<!-- ### **Watch the** [**YouTube recording of the webinar**](https://www.youtube.com/watch?v=rxVg3yrc51s)
+
+<p align="center">
+  <img src="./images/pt-dinov2-multi-label-plant-species-classification.png" height="240px">
+  <img src="./images/intel-pytorch-foundation.jpg" height="240px">
+</p> -->
+
+<!-- ## Watch the Webinar on YouTube
+
+
+▶️ [**Click here to watch on YouTube**](https://www.youtube.com/watch?v=rxVg3yrc51s)
+
+Discover how we used DINOv2 + PyTorch Lightning for large-scale multi-label plant species classification.
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=rxVg3yrc51s"> <img src="https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg" alt="YouTube Video" height="240px" style="margin-right: 12px;">
+  </a> <img src="./images/intel-pytorch-foundation.jpg" alt="PyTorch Foundation | Intel" height="240px">
+</div> -->
+
 <div align="center">
 
 <table>
@@ -29,6 +47,27 @@ This webinar is made possible through the support of the [**PyTorch Foundation**
 </table>
 
 </div>
+
+<!-- TABLE OF CONTENTS -->
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li><a href="#what-youll-learn">What You'll Learn</a></li>
+    <li><a href="#event-details">Event Details</a></li>
+    <li>
+      <a href="#quickstart-guide">Quickstart Guide</a>
+      <ul>
+        <li><a href="#1-clone-the-repository">1. Clone the repository</a></li>
+        <li><a href="#2-install-uv-fast-package-manager">2. Install uv (Fast Package Manager)</a></li>
+        <li><a href="#3-create-a-virtual-environment">3. Create a Virtual Environment</a></li>
+        <li><a href="#4-install-dependencies-and-set-up-the-project">4. Install Dependencies and Set Up the Project</a></li>
+        <li><a href="#5-download-dataset-&-fine-tuned-vit-model">5. Download Dataset & Fine-Tuned ViT Model</a></li>
+        <li><a href="#6-run-tests-to-verify-setup">6. Run tests to verify setup</a></li>
+      </ul>
+    </li>
+    <li><a href="#intel-tiber-ai-cloud-setup">Intel Tiber AI Cloud Setup</a></li>
+  </ol>
+</details>
 
 ## What You’ll Learn
 
