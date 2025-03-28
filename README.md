@@ -9,10 +9,26 @@ This session will demonstrate how **self-supervised Vision Transformers (ViTs)**
 
 This webinar is made possible through the support of the [**PyTorch Foundation**](https://pytorch.org/foundation) and [**Intel AI**](https://www.intel.la/content/www/xl/es/artificial-intelligence/overview1.html).
 
-<p align="left">
-  <img src="./images/pt-dinov2-multi-label-plant-species-classification.png" height="240px">
-  <img src="./images/intel-pytorch-foundation.jpg" height="240px">
-</p>
+<div align="center">
+
+<table>
+  <tr>
+    <th align="center">YouTube recording</th>
+    <th align="center">PyTorch Foundation | Intel</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://www.youtube.com/watch?v=rxVg3yrc51s">
+        <img src="https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg" alt="YouTube Video" height="240px">
+      </a>
+    </td>
+    <td align="center">
+      <img src="./images/intel-pytorch-foundation.jpg" alt="PyTorch Foundation | Intel" height="240px">
+    </td>
+  </tr>
+</table>
+
+</div>
 
 ## What You’ll Learn
 
@@ -20,10 +36,6 @@ This webinar is made possible through the support of the [**PyTorch Foundation**
 - Efficient **feature extraction** from a subset of **1.4M+ images** using **PyTorch Lightning**.
 - Using **Faiss** for fast **nearest neighbor search** on high-dimensional embeddings.
 - Image processing techniques: **grid-based tiling** and **prediction aggregation** to handle large datasets.
-
-## YouTube video recording
-
-[![Video Thumbnail](https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg)](https://www.youtube.com/watch?v=rxVg3yrc51s)
 
 ## Event Details
 
