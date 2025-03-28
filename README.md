@@ -21,6 +21,10 @@ This webinar is made possible through the support of the [**PyTorch Foundation**
 - Using **Faiss** for fast **nearest neighbor search** on high-dimensional embeddings.
 - Image processing techniques: **grid-based tiling** and **prediction aggregation** to handle large datasets.
 
+## YouTube video recording
+
+[![Video Thumbnail](https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg)](https://www.youtube.com/watch?v=rxVg3yrc51s)
+
 ## Event Details
 
 📅 **Date:** March 27th, 12 PM PST
