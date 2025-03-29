@@ -2,51 +2,23 @@
 
 ![plantclef-2025-banner](https://www.imageclef.org/system/files/new_banner_plantclef2025.png)
 
-**PyTorch webinar** on using the **DINOv2** model for multi-label plant species classification in the [**PlantCLEF @ LifeCLEF & CVPR-FGVC**](https://www.kaggle.com/competitions/plantclef-2025) competition on Kaggle.
+**PyTorch webinar** on using the **[DINOv2](https://dinov2.metademolab.com/)** model and the **[Faiss](https://ai.meta.com/tools/faiss/)** library for multi-label plant species classification in the [**PlantCLEF @ LifeCLEF & CVPR-FGVC**](https://www.kaggle.com/competitions/plantclef-2025) competition on Kaggle.
 This session will demonstrate how **self-supervised Vision Transformers (ViTs)** and **similarity search techniques** can classify plant species efficiently at scale.
 
 ![diagram](./images/pytorch-webinar-diagram.png)
 
 This webinar is made possible through the support of the [**PyTorch Foundation**](https://pytorch.org/foundation) and [**Intel AI**](https://www.intel.la/content/www/xl/es/artificial-intelligence/overview1.html).
 
-<!-- ### **Watch the** [**YouTube recording of the webinar**](https://www.youtube.com/watch?v=rxVg3yrc51s)
-
-<p align="center">
-  <img src="./images/pt-dinov2-multi-label-plant-species-classification.png" height="240px">
-  <img src="./images/intel-pytorch-foundation.jpg" height="240px">
-</p> -->
-
 ## Watch the Webinar on YouTube
 
 ▶️ [**Click here to watch on YouTube**](https://www.youtube.com/watch?v=rxVg3yrc51s)
 
-Discover how we used DINOv2 + PyTorch Lightning for large-scale multi-label plant species classification.
+Discover how we used **DINOv2** + **Faiss** leveraging PyTorch Lightning for large-scale multi-label plant species classification.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=rxVg3yrc51s"> <img src="https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg" alt="YouTube Video" height="240px" style="margin-right: 12px;">
   </a> <img src="./images/intel-pytorch-foundation.jpg" alt="PyTorch Foundation | Intel" height="240px">
 </div>
-
-<!-- <div align="center">
-
-<table>
-  <tr>
-    <th align="center">YouTube recording</th>
-    <th align="center">PyTorch Foundation | Intel</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://www.youtube.com/watch?v=rxVg3yrc51s">
-        <img src="https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg" alt="YouTube Video" height="240px">
-      </a>
-    </td>
-    <td align="center">
-      <img src="./images/intel-pytorch-foundation.jpg" alt="PyTorch Foundation | Intel" height="240px">
-    </td>
-  </tr>
-</table>
-
-</div> -->
 
 <!-- TABLE OF CONTENTS -->
 <details>
