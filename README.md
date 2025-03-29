@@ -16,18 +16,18 @@ This webinar is made possible through the support of the [**PyTorch Foundation**
   <img src="./images/intel-pytorch-foundation.jpg" height="240px">
 </p> -->
 
-<!-- ## Watch the Webinar on YouTube
-
+## Watch the Webinar on YouTube
 
 ▶️ [**Click here to watch on YouTube**](https://www.youtube.com/watch?v=rxVg3yrc51s)
 
 Discover how we used DINOv2 + PyTorch Lightning for large-scale multi-label plant species classification.
+
 <div align="center">
   <a href="https://www.youtube.com/watch?v=rxVg3yrc51s"> <img src="https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg" alt="YouTube Video" height="240px" style="margin-right: 12px;">
   </a> <img src="./images/intel-pytorch-foundation.jpg" alt="PyTorch Foundation | Intel" height="240px">
-</div> -->
+</div>
 
-<div align="center">
+<!-- <div align="center">
 
 <table>
   <tr>
@@ -46,7 +46,7 @@ Discover how we used DINOv2 + PyTorch Lightning for large-scale multi-label plan
   </tr>
 </table>
 
-</div>
+</div> -->
 
 <!-- TABLE OF CONTENTS -->
 <details>
