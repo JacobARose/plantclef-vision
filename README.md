@@ -13,7 +13,7 @@ This webinar is made possible through the support of the [**PyTorch Foundation**
 
 ▶️ [**Click here to watch on YouTube**](https://www.youtube.com/watch?v=rxVg3yrc51s)
 
-Discover how we used **DINOv2** + **Faiss** leveraging PyTorch Lightning for large-scale multi-label plant species classification.
+Discover how we used **DINOv2** + **Faiss** leveraging **[PyTorch](https://pytorch.org/)** and **[PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/)** for large-scale multi-label plant species classification.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=rxVg3yrc51s"> <img src="https://img.youtube.com/vi/rxVg3yrc51s/maxresdefault.jpg" alt="YouTube Video" height="240px" style="margin-right: 12px;">
