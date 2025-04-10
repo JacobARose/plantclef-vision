@@ -175,6 +175,9 @@ def plot_image_tiles(
     :param grid_size: Number of tiles per row/column (grid_size x grid_size).
     :param figsize: Figure size (width, height).
     :param dpi: Dots per inch (image resolution).
+
+
+    [] [TODO] -- Add option to include axis labels with x & y resolution visible on 1 of the grid_size x grid_size tiles
     """
     # extract the first row from DataFrame
     subset_df = df.head(1)
@@ -231,6 +234,14 @@ def plot_image_tiles(
 
 
 def embeddings_to_image(embedding_list: list[np.array]) -> list[Image.Image]:
+    """
+    (Added Wednesday Apr 9th, 2025)
+        * It looks like this might have been written to replace the clunky chunk of code within plot_embeddings function
+            [] [TODO] -- Refactor that plot function to use this
+
+
+    """
+
     embedding_images = []
     for embedding in embedding_list:
         # Find the next perfect square size greater than or equal to the embedding length

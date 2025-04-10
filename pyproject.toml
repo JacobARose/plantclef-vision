@@ -4,7 +4,7 @@ version = "0.1.1"
 authors = [{ name = "Jacob A Rose", email = "Jacob@JacobARose.com" }]
 description = "PyTorch PlantCLEF vision helper package"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dynamic = ["dependencies"]
 
 [project.urls]
