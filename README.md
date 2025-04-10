@@ -2,6 +2,12 @@
 
 ![plantclef-2025-banner](https://www.imageclef.org/system/files/new_banner_plantclef2025.png)
 
+(Added Wednesday Apr 9th, 2025)
+* Jacob A Rose forked this repo from the starter repo originally created by [@murilogustineli](https://github.com/murilogustineli), for the purpose of improving on their work to compete in the 2025 PlantCLEF dataset challenge.
+
+
+------
+
 **PyTorch webinar** on using the **[DINOv2](https://dinov2.metademolab.com/)** model and the **[Faiss](https://ai.meta.com/tools/faiss/)** library for multi-label plant species classification in the [**PlantCLEF @ LifeCLEF & CVPR-FGVC**](https://www.kaggle.com/competitions/plantclef-2025) competition on Kaggle.
 This session will demonstrate how **self-supervised Vision Transformers (ViTs)** and **similarity search techniques** can classify plant species efficiently at scale.
 
