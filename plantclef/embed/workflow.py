@@ -20,7 +20,16 @@ def torch_pipeline(
     cpu_count: int = 1,
     top_k: int = 5,
 ):
-    """Pipeline to extract embeddings and top-K logits using PyTorch Lightning."""
+    """
+    Pipeline to extract embeddings and top-K logits using PyTorch Lightning.
+
+    :param pandas_df: DataFrame containing the data to be processed.
+    :param batch_size: Size of the batches for DataLoader.
+    :param use_grid: Boolean indicating whether to use grid processing.
+    :param grid_size: Number of grid cells to split each image into if use_grid is True.
+    :param cpu_count: Number of CPU cores to use for DataLoader.
+    :param top_k: Number of top logits to extract.
+    """
 
     # initialize model
     model = DINOv2LightningModel(top_k=top_k)
