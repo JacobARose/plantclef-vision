@@ -1,6 +1,11 @@
 """
+File: utils.py
+Author: Jacob Alexander Rose
 
-Written on Friday Apr 11th, 2025 in order to stream upload the large (160+ or 300+ GB) data files from a URL to an S3 bucket I have control over
+
+Written on  Sunday Apr 13th, 2025, containing some functions previously written on Friday Apr 11th, 2025 in order to
+1. Download the full plantclef 2025 dataset from a 3rd party URL to the local dev environment
+2. Stream upload the large (160+ or 300+ GB) data files from the local dev environment to an S3 bucket I have control over
 
 """
 
@@ -9,26 +14,6 @@ import boto3
 from boto3.s3.transfer import TransferConfig
 from tqdm import tqdm
 import os
-
-# AWS client
-s3_client = boto3.client("s3")
-bucket_name = "plantclef2025"
-object_name = "PlantCLEF2024singleplanttrainingdata_800_max_side_size.tar"
-file_path = "/tmp/largefile.tar"  # Temporary local path for the file
-
-# Configure multipart upload
-config = TransferConfig(
-    multipart_threshold=1024 * 25,
-    max_concurrency=10,
-    multipart_chunksize=1024 * 25,
-    use_threads=True,
-)
-
-# Stream the file directly from URL and upload to S3
-url = "https://lab.plantnet.org/LifeCLEF/PlantCLEF2024/single_plant_training_data/PlantCLEF2024singleplanttrainingdata_800_max_side_size.tar"
-
-
-##################################
 
 
 def download_from_url(url: str, file_path: str, chunk_size: int = 1024 * 1024) -> bool:
@@ -75,6 +60,7 @@ def upload_local_file_to_s3(
     """
     total_size = os.stat(file_path).st_size
     try:
+        s3_client = boto3.client("s3")
         # Step 2: Upload the file to S3 with a progress bar
         with tqdm(
             desc="Uploading to S3",
@@ -93,26 +79,3 @@ def upload_local_file_to_s3(
     except Exception as e:
         print(f"Error uploading file to S3: {e}")
         return False
-
-
-##################################################################
-
-if __name__ == "__main__":
-    # Step 1: Download the file from the URL
-    if download_from_url(url, file_path):
-        print(f"File downloaded successfully to {file_path}.")
-    else:
-        print("Failed to download the file.")
-        exit(1)
-
-    # Step 2: Upload the file to S3
-    if upload_local_file_to_s3(file_path, bucket_name, object_name, config):
-        print(f"File uploaded successfully to s3://{bucket_name}/{object_name}.")
-    else:
-        print("Failed to upload the file.")
-        exit(1)
-
-# Clean up the temporary file (optional)
-os.remove(file_path)
-print(f"Temporary file {file_path} removed.")
-print("File uploaded successfully!")
