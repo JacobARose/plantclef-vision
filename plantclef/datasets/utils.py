@@ -16,7 +16,9 @@ from tqdm import tqdm
 import os
 
 
-def download_from_url(url: str, file_path: str, chunk_size: int = 1024 * 1024) -> bool:
+def download_from_url(
+    url: str, file_path: str, chunk_size: int = 5 * 1024 * 1024
+) -> bool:
     response = requests.get(url, stream=True)
     total_size = int(
         response.headers.get("Content-Length", 0)

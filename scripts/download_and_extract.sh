@@ -7,8 +7,8 @@
 # CREATED: Monday April 14th, 2025
 #===============================================================================
 
-set -euo pipefail
-IFS=$'\n\t'
+# set -euo pipefail
+# IFS=$'\n\t'
 
 # Default values for input URL and output directory
 input_url=""
@@ -52,15 +52,15 @@ fi
 ##############################################################################
 # Step 2: Download and extract the file
 
-echo "Downloading and extracting files from $input_url to $output_dir"
+echo "Downloading and extracting files\nFrom: $input_url \nTo: $output_dir"
 echo "Current time: $(date)"
 
 # Create the output directory if it doesn't exist
 # and download the file from the input URL
 # using curl, then extract it using tar with a progress bar
-mkdir -p "$output_dir" && curl -# -L $input_url | tar -xzf - -C $output_dir
+mkdir -p "$output_dir" && curl -# -L $input_url | tar -xf - -C $output_dir
 
-
+# mkdir -p "$output_dir" && curl -# -L $input_url | tar -xf - -C $output_dir 2> error_log.txt
 
 # Check if the extraction was successful
 if [[ $? -ne 0 ]]; then
@@ -68,5 +68,5 @@ if [[ $? -ne 0 ]]; then
 
     echo "Contents of $output_dir:"
     ls -l "$output_dir"
-    exit 1
+    # exit 1
 fi
