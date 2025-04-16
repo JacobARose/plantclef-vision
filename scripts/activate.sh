@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e # exit on error
+# set -e # exit on error
 
 # activate venv
 cd "$(dirname "$0")/.."

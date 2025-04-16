@@ -19,7 +19,7 @@
 # Define constants and configuration parameters below
 
 input_url="https://lab.plantnet.org/LifeCLEF/PlantCLEF2024/single_plant_training_data/PlantCLEF2024singleplanttrainingdata_800_max_side_size.tar"
-output_dir="$HOME/plantclef-vision/data/PlantCLEF2024singleplanttrainingdata_800_max_side_size"
+output_dir="$HOME/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size"
 
 
 bash $HOME/plantclef-vision/scripts/download_and_extract.sh -i "$input_url" -o "$output_dir"
