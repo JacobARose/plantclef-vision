@@ -11,17 +11,16 @@
 #           "small_singleplanttrainingdata"}
 
 
+
 #===============================================================================
 
 # Exit immediately if a command exits with a non-zero status
 # set -e
-
 # Enable debugging (uncomment for debugging purposes)
 # set -x
 
 
 # source ~/plantclef-vision/scripts/activate.sh
-
 # Define constants and configuration parameters below
 
 input_url="https://lab.plantnet.org/LifeCLEF/PlantCLEF2024/single_plant_training_data/PlantCLEF2024singleplanttrainingdata_800_max_side_size.tar"

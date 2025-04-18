@@ -53,7 +53,9 @@ fi
 # Step 2: Download and extract the file
 
 echo "Downloading and extracting files\nFrom: $input_url \nTo: $output_dir"
-echo "Current time: $(date)"
+
+start_time="$(date)"
+echo "[START] time: $start_time"
 
 # Create the output directory if it doesn't exist
 # and download the file from the input URL
@@ -70,3 +72,8 @@ if [[ $? -ne 0 ]]; then
     ls -l "$output_dir"
     # exit 1
 fi
+
+
+echo "[FINISHED] -- Downloaded and extracting files\nFrom: $input_url \nTo: $output_dir"
+echo "[START] time: $start_time"
+echo "[FINISH] time: $(date)"
