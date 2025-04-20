@@ -4,6 +4,7 @@ import textwrap
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from typing import List, Tuple
 from PIL import Image
 from .serde import deserialize_image
 from matplotlib.font_manager import FontProperties
@@ -21,6 +22,41 @@ def crop_image_square(image: Image.Image) -> np.ndarray:
     image = image.crop((left, top, right, bottom))
     image_array = np.array(image)
     return image_array
+
+
+def plot_image_grid(
+    image_paths: List[str],
+    grid_size: Tuple[int, int] = (3, 3),
+    figsize: Tuple[int, int] = (10, 10),
+    crop_square: bool = False,
+):
+    """
+    Plots a grid of images from a list of file paths.
+
+    Args:
+        image_paths (list): List of image file paths.
+        grid_size (tuple): Tuple specifying the grid size (rows, cols).
+        figsize (tuple): Tuple specifying the figure size.
+        crop_square (bool): If True, center crops images to a square format.
+    """
+    rows, cols = grid_size
+    fig, axes = plt.subplots(rows, cols, figsize=figsize)
+    axes = axes.flatten()
+
+    for i, ax in enumerate(axes):
+        if i < len(image_paths):
+            img = Image.open(image_paths[i])
+            # crop image to square if required
+            if crop_square:
+                img = crop_image_square(img)
+
+            ax.imshow(img)
+            ax.axis("off")
+        else:
+            ax.axis("off")
+
+    plt.tight_layout()
+    plt.show()
 
 
 def plot_images_from_binary(
