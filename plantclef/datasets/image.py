@@ -9,7 +9,6 @@ Author: Jacob A Rose
 Date: Saturday Apr 19th, 2025
 """
 
-
 from multiprocessing import Pool
 from typing import List, Tuple
 from PIL import Image
@@ -18,26 +17,19 @@ from tqdm import tqdm
 from functools import partial
 
 
-
 resampling_modes = {
-    "nearest":Resampling.NEAREST,
-    "box":Resampling.BOX,
-    "bilinear":Resampling.BILINEAR,
-    "hamming":Resampling.HAMMING,
-    "bicubic":Resampling.BICUBIC,
-    "lanczos":Resampling.LANCZOS
+    "nearest": Resampling.NEAREST,
+    "box": Resampling.BOX,
+    "bilinear": Resampling.BILINEAR,
+    "hamming": Resampling.HAMMING,
+    "bicubic": Resampling.BICUBIC,
+    "lanczos": Resampling.LANCZOS,
 }
 
 
-
-
-
 def smart_resize(
-    image: Image.Image,
-    target_height: int,
-    target_width: int,
-    mode: str = "nearest"
-    ) -> Image.Image:
+    image: Image.Image, target_height: int, target_width: int, mode: str = "nearest"
+) -> Image.Image:
     """
     Resizes an image to the target dimensions while maintaining aspect ratio.
     Pads the image with black (zero) pixels to fit the target dimensions if necessary.
@@ -72,11 +64,8 @@ def smart_resize(
 
 
 def parse_image(
-    file_path: str,
-    target_height: int,
-    target_width: int,
-    mode: str = "nearest"
-    ) -> Tuple[str, Image.Image]:
+    file_path: str, target_height: int, target_width: int, mode: str = "nearest"
+) -> Tuple[str, Image.Image]:
     """
     Resizes an image using smart_resize and returns the resized image in memory.
 
@@ -103,7 +92,7 @@ def resize_images_in_parallel(
     target_height: int,
     target_width: int,
     mode: str = "nearest",
-    num_workers: int = 4
+    num_workers: int = 4,
 ) -> List[Tuple[str, Image.Image]]:
     """
     Maps the smart_resize function to a list of image file paths in parallel using multiprocessing.Pool.imap.
@@ -116,17 +105,63 @@ def resize_images_in_parallel(
     """
     resized_images = []
     with Pool(processes=num_workers) as pool:
-        
-        process_with_params = partial(parse_image, target_height=target_height, target_width=target_width, mode=mode)
+        process_with_params = partial(
+            parse_image,
+            target_height=target_height,
+            target_width=target_width,
+            mode=mode,
+        )
 
         # Use tqdm to display a progress bar
         for result in tqdm(
             pool.imap(process_with_params, file_paths),
             total=len(file_paths),
             desc="Resizing images",
-            unit="image"
+            unit="image",
         ):
             resized_images.append(result)
 
     paths, imgs = zip(*resized_images)
     return paths, imgs
+
+
+############## Image Dimension Calculation
+
+
+def parse_image_dimensions(file_path: str) -> Tuple[str, int, int]:
+    """
+    Reads an image file and returns its file path, height, and width.
+
+    :param file_path: Path to the image file
+    :return: A tuple containing the file path, height, and width of the image
+    """
+    try:
+        with Image.open(file_path) as img:
+            width, height = img.size
+        return file_path, width, height
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+        return file_path, None, None
+
+
+def calculate_image_dimensions(
+    file_paths: List[str], num_workers: int = 4
+) -> List[Tuple[str, int, int]]:
+    """
+    Calculates the dimensions (height and width) of images in parallel using multiprocessing.
+
+    :param file_paths: List of image file paths
+    :param num_workers: Number of worker processes to use for parallel processing
+    :return: A list of tuples containing file paths, heights, and widths of the images
+    """
+    dimensions = []
+    with Pool(processes=num_workers) as pool:
+        # Use tqdm to display a progress bar
+        for result in tqdm(
+            pool.imap(parse_image_dimensions, file_paths),
+            total=len(file_paths),
+            desc="Calculating image dimensions",
+            unit="image",
+        ):
+            dimensions.append(result)
+    return dimensions
