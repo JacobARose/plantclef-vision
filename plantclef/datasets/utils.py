@@ -14,6 +14,43 @@ import boto3
 from boto3.s3.transfer import TransferConfig
 from tqdm import tqdm
 import os
+from typing import List
+import pandas as pd
+
+# dataset_dir = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size/images_max_side_800"
+
+
+def collect_image_filepaths(dataset_dir) -> List[str]:
+    """
+    Collect all image file paths from the dataset directory into a list of strings.
+    Args:
+        dataset_dir (str): Directory containing the image files.
+    Returns:
+        list: List of image file paths.
+    """
+    return [
+        os.path.join(root, filename)
+        for root, _, filenames in tqdm(os.walk(dataset_dir), smoothing=0)
+        for filename in filenames
+    ]
+
+
+def merge_filepaths_with_metadata(metadata_df, dataset_dir) -> pd.DataFrame:
+    """
+    Merge the image file paths with the metadata DataFrame.
+    Args:
+        metadata_df (pd.DataFrame): DataFrame containing metadata.
+        dataset_dir (str): Directory containing the image files.
+    Returns:
+        pd.DataFrame: Merged DataFrame containing metadata and image file paths.
+    """
+    image_paths = collect_image_filepaths(dataset_dir)
+    paths_df = pd.DataFrame(image_paths, columns=["image_path"])
+    paths_df = paths_df.assign(
+        image_name=paths_df.image_path.map(lambda x: x.split("/")[-1])
+    )
+
+    return metadata_df.merge(paths_df, how="inner", on="image_name")
 
 
 def download_from_url(
