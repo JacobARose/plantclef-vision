@@ -14,9 +14,13 @@ import boto3
 from boto3.s3.transfer import TransferConfig
 from tqdm import tqdm
 import os
-from typing import List
+from typing import List, Union, Dict
 import pandas as pd
+from pathlib import Path
+from functools import lru_cache
 
+
+# plantclef_class_index_path = Path(train_metadata_dir, "species_ids.csv")
 # dataset_dir = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size/images_max_side_800"
 
 
@@ -51,6 +55,51 @@ def merge_filepaths_with_metadata(metadata_df, dataset_dir) -> pd.DataFrame:
     )
 
     return metadata_df.merge(paths_df, how="inner", on="image_name")
+
+
+@lru_cache(maxsize=1)
+def load_plantclef_idx2class(
+    plantclef_class_index_path: Union[str, Path],
+) -> Dict[int, int]:
+    """
+    Load the plantclef class index from the given path.
+    The class index is a mapping of class IDs to their respective class names.
+    Args:
+        plantclef_class_index_path (Union[str, Path]): The path to the class index file.
+    Returns:
+        Dict[int, int]: A dictionary mapping class index # to their respective species ID.
+    """
+    class_mappings = pd.read_csv(plantclef_class_index_path)
+    assert (
+        (class_mappings.index.is_monotonic_increasing)
+        and (class_mappings.index.is_unique)
+    ), "Class index loaded from 'species_ids.csv' is not monotonic increasing or not unique. Please check the input file."
+
+    idx2class = class_mappings.to_dict()["species_id"]
+    return idx2class
+
+
+@lru_cache(maxsize=1)
+def load_plantclef_class2idx(
+    plantclef_class_index_path: Union[str, Path],
+) -> Dict[int, int]:
+    """
+    Load the plantclef class index from the given path.
+    The class index is a mapping of class names to their respective IDs.
+    Args:
+        plantclef_class_index_path (Union[str, Path]): The path to the class index file.
+    Returns:
+        Dict[int, int]: A dictionary mapping class index # to their respective species ID.
+    """
+    class_mappings = pd.read_csv(plantclef_class_index_path)
+    assert (
+        (class_mappings.index.is_monotonic_increasing)
+        and (class_mappings.index.is_unique)
+    ), "Class index loaded from 'species_ids.csv' is not monotonic increasing or not unique. Please check the input file."
+
+    class2idx = class_mappings.reset_index().set_index("species_id").to_dict()["index"]
+
+    return class2idx
 
 
 def download_from_url(
