@@ -18,7 +18,7 @@ from typing import List, Union, Dict
 import pandas as pd
 from pathlib import Path
 from functools import lru_cache
-
+import shutil
 
 # plantclef_class_index_path = Path(train_metadata_dir, "species_ids.csv")
 # dataset_dir = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size/images_max_side_800"
@@ -167,3 +167,13 @@ def upload_local_file_to_s3(
     except Exception as e:
         print(f"Error uploading file to S3: {e}")
         return False
+
+
+def clear_cache(cache_dir: str) -> None:
+    """Clear the cache directory."""
+    try:
+        if os.path.isdir(cache_dir):
+            shutil.rmtree(cache_dir)
+    except Exception:
+        # print(f"Error clearing cache: {e}")
+        pass
