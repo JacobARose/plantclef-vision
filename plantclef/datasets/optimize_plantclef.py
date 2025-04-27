@@ -23,6 +23,7 @@ from plantclef.datasets.utils import (
     merge_filepaths_with_metadata,
     clear_cache,
     load_plantclef_class2idx,
+    optimize_pandas_dtypes,
 )
 import os
 
@@ -46,7 +47,7 @@ def load_metadata(
             "Found previously preprocessed metadata cache, loading from parquet file and skipping preprocessing"
         )
         try:
-            metadata = pd.read_parquet(metadata_path)
+            metadata = pd.read_parquet(metadata_cache_path)
         except Exception as e:
             print(
                 "Failed to load parquet file. Attempting to load from csv instead. Error message:\n",
@@ -61,6 +62,9 @@ def load_metadata(
         metadata = merge_filepaths_with_metadata(
             metadata_df=metadata, dataset_dir=dataset_dir
         )
+
+        metadata = optimize_pandas_dtypes(metadata)
+
         print("COMPLETE - Preprocessing metadata csv.")
         print(
             f"Saving metadata csv to a parquet cache for faster retrieval. File is located at:\n{metadata_cache_path}"

@@ -24,6 +24,23 @@ import shutil
 # dataset_dir = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size/images_max_side_800"
 
 
+def optimize_pandas_dtypes(data_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Optimize the dtypes of a pandas DataFrame by converting to the most
+    memory-efficient dtypes.
+
+    """
+    data_df = data_df.convert_dtypes()
+    val_counts = data_df.nunique()
+
+    max_categories = 10_000
+    categorical_cols = val_counts[val_counts < max_categories].index.tolist()
+
+    data_df = data_df.astype({col: "category" for col in categorical_cols})
+
+    return data_df
+
+
 def collect_image_filepaths(dataset_dir) -> List[str]:
     """
     Collect all image file paths from the dataset directory into a list of strings.
