@@ -91,7 +91,7 @@ def get_inputs(
     if label_encoder is None:
         df = data_df.assign(label_idx=data_df[label_col])
     else:
-        df = data_df[[path_col, label_col]].assign(
+        df = data_df.assign(
             label_idx=data_df[label_col].map(lambda x: label_encoder[x])
         )
 
@@ -109,7 +109,7 @@ def optimize_row_fn(
     target_width: int = 512,
     mode: str = "nearest",
     **kwargs,
-) -> Tuple[Image, int]:
+) -> Tuple[Image, int, int]:
     """
     Function for parsing individual rows during the litdata.optimize() process.
     Args:
@@ -125,7 +125,7 @@ def optimize_row_fn(
 
     _, img = parse_image(file_path, target_height, target_width, mode)
 
-    return img, class_label_idx
+    return img, class_label_idx, sample_idx
 
 
 if __name__ == "__main__":
@@ -166,7 +166,8 @@ if __name__ == "__main__":
         fn=partial(optimize_row_fn, args=args),
         inputs=inputs,
         output_dir=args["output_dir"],
-        chunk_size=2000,
+        # chunk_size=2000,
+        chunk_bytes="64MB",
         reorder_files=False,
         num_workers=os.cpu_count(),
         # num_downloaders=10,
