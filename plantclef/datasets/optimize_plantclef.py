@@ -170,8 +170,9 @@ if __name__ == "__main__":
         reorder_files=False,
         num_workers=os.cpu_count(),
         # num_downloaders=10,
+        fast_dev_run=False,  # True,
         mode="overwrite",
     )
 
     clear_cache(cache_dir)
-    print("Done!")
+    print("Done! Check for optimized results in --> ", args["output_dir"])
