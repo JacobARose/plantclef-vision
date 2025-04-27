@@ -9,6 +9,10 @@ are designed to transform, validate, and structure data to ensure it is
 ready for optimization and subsequent serialization processes.
 """
 
+# from litdata import clear_cache
+from litdata import optimize
+from functools import partial
+from pprint import pprint
 from plantclef.datasets.image import parse_image
 from PIL.Image import Image
 from lightning import seed_everything
@@ -21,11 +25,6 @@ from plantclef.datasets.utils import (
     load_plantclef_class2idx,
 )
 import os
-
-# from litdata import clear_cache
-from litdata import optimize
-from functools import partial
-from pprint import pprint
 
 
 def load_metadata(
@@ -89,7 +88,7 @@ def get_inputs(
         df = data_df.assign(label_idx=data_df[label_col])
     else:
         df = data_df[[path_col, label_col]].assign(
-            label_idx=lambda x: label_encoder[x[label_col]]
+            label_idx=data_df[label_col].map(lambda x: label_encoder[x])
         )
 
     rows = [
@@ -126,6 +125,8 @@ def optimize_row_fn(
 
 
 if __name__ == "__main__":
+    print(f"Running __main__ section of python script: {__file__}")
+
     dataset_dir = Path(
         "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size/images_max_side_800"
     )
