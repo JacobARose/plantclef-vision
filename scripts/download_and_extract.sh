@@ -6,6 +6,14 @@
 # AUTHOR: Jacob A Rose
 # CREATED: Monday April 14th, 2025
 #===============================================================================
+# Note - (Added Sunday Apr 27th, 2025)
+# * [TODO] - Consider replacing this script's logic with the following python line:
+#   from torchvision.datasets.utils import download_and_extract_archive
+# * Source Code of the above line: github.com/pytorch/vision/blob/main/torchvision/datasets/utils.py
+
+
+
+
 
 # set -euo pipefail
 # IFS=$'\n\t'
