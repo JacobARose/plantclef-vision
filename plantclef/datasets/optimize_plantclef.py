@@ -12,20 +12,22 @@ ready for optimization and subsequent serialization processes.
 # from litdata import clear_cache
 from litdata import optimize
 from functools import partial
-from pprint import pprint
-from plantclef.datasets.image import parse_image
-from PIL.Image import Image
 from lightning import seed_everything
-from typing import Any, Dict, Optional, Tuple
-from pathlib import Path
+import os
 import pandas as pd
+from pathlib import Path
+from PIL.Image import Image
+from plantclef.datasets.image import parse_image
 from plantclef.datasets.utils import (
     merge_filepaths_with_metadata,
     clear_cache,
     load_plantclef_class2idx,
     optimize_pandas_dtypes,
 )
-import os
+from pprint import pprint
+import torch
+from typing import Any, Dict, Optional, Tuple
+
 
 
 def load_metadata(
@@ -109,7 +111,7 @@ def optimize_row_fn(
     target_width: int = 512,
     mode: str = "nearest",
     **kwargs,
-) -> Tuple[Image, int, int]:
+) -> Tuple[torch.Tensor, int, int]:
     """
     Function for parsing individual rows during the litdata.optimize() process.
     Args:
@@ -144,7 +146,7 @@ if __name__ == "__main__":
         "target_height": 618,
         "target_width": 618,
         "mode": "nearest",
-        "output_dir": "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/optimized/res618",
+        "output_dir": "/teamspace/studios/plantclef-dataset/plantclef-vision/data/plantclef2025/optimized/res618",
     }
     print("Arguments:")
     pprint(args)

@@ -13,9 +13,11 @@ from multiprocessing import Pool
 from typing import List, Tuple
 from PIL import Image
 from PIL.Image import Resampling
+import torch
+from torchvision.transforms.functional import pil_to_tensor
 from tqdm import tqdm
 from functools import partial
-
+from torchvision import transforms as T
 
 resampling_modes = {
     "nearest": Resampling.NEAREST,
@@ -62,10 +64,11 @@ def smart_resize(
 
     return new_image
 
+pil_to_tensor = T.ToTensor()
 
 def parse_image(
     file_path: str, target_height: int, target_width: int, mode: str = "nearest"
-) -> Tuple[str, Image.Image]:
+) -> Tuple[str, torch.Tensor]:
     """
     Resizes an image using smart_resize and returns the resized image in memory.
 
@@ -81,7 +84,7 @@ def parse_image(
         # Apply smart_resize
         resized_image = smart_resize(image, target_height, target_width, mode)
 
-        return file_path, resized_image
+        return file_path, pil_to_tensor(resized_image)
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
         return file_path, None
