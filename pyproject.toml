@@ -6,12 +6,7 @@ description = "PyTorch PlantCLEF vision helper package"
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["dependencies"]
-dependencies = [
-    "jupyter",
-    "jupyter-contrib-nbextensions",
-    "notebook==6.4.12",
-    "traitlets==5.9.0",
-]
+
 
 [project.urls]
 Homepage = "https://github.com/JacobARose/plantclef-vision"

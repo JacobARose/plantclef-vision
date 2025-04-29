@@ -20,7 +20,12 @@ gdown==5.2.0
 boto3
 
 # developer tools
+jupyter
+jupyter-contrib-nbextensions
 jupyterlab==4.3.5
+notebook==6.4.12
+traitlets==5.9.0
+ipykernel
 ruff==0.9.9
 pre-commit==4.1.0
 pytest==8.3.4
