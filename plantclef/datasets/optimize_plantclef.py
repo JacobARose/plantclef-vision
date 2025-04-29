@@ -132,12 +132,12 @@ if __name__ == "__main__":
     print(f"Running __main__ section of python script: {__file__}")
 
     dataset_dir = Path(
-        "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size/images_max_side_800"
+        "/teamspace/studios/plantclef2025/plantclef-vision/data/plantclef2025/PlantCLEF2024singleplanttrainingdata_800_max_side_size/images_max_side_800"
     )
 
     # File path of the competition-provided csv train metadata
     train_metadata_path = Path(
-        "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/competition-metadata/PlantCLEF2024_single_plant_training_metadata.csv"
+        "/teamspace/studios/plantclef2025/plantclef-vision/data/plantclef2025/competition-metadata/PlantCLEF2024_single_plant_training_metadata.csv"
     )
 
     args = {
