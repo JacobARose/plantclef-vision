@@ -12,8 +12,8 @@ dynamic = ["dependencies"]
 Homepage = "https://github.com/JacobARose/plantclef-vision"
 Issues = "https://github.com/JacobARose/plantclef-vision/issues"
 
-[project.scripts]
-plantclef = "plantclef.cli:app"
+# [project.scripts]
+# plantclef = "plantclef.cli:app"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 dependencies = { file = "requirements.txt" }
 
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["plantclef*"]
-namespaces = false
+# [tool.setuptools.packages.find]
+# where = ["."]
+# include = ["plantclef*"]
+# namespaces = false

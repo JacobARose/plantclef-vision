@@ -59,7 +59,7 @@ if __name__ == "__main__":
         print("Failed to upload the file.")
         exit(1)
 
-# Clean up the temporary file (optional)
-os.remove(file_path)
-print(f"Temporary file {file_path} removed.")
-print("File uploaded successfully!")
+    # Clean up the temporary file (optional)
+    os.remove(file_path)
+    print(f"Temporary file {file_path} removed.")
+    print("File uploaded successfully!")
