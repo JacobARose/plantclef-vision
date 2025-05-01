@@ -1,4 +1,13 @@
-from . import datasets, embed, faiss, torch, config, model_setup, plotting, serde
+from . import (
+    datasets,
+    embed,
+    faiss_tools,
+    pytorch,
+    config,
+    model_setup,
+    plotting,
+    serde,
+)
 
 # import sys
 
@@ -6,8 +15,8 @@ from . import datasets, embed, faiss, torch, config, model_setup, plotting, serd
 __all__ = [
     "datasets",
     "embed",
-    "faiss",
-    "torch",
+    "faiss_tools",
+    "pytorch",
     "config",
     "model_setup",
     "plotting",

@@ -22,7 +22,7 @@ def list_module_tree(package_name):
         print(f"Error: Package '{package_name}' not found.")
         return
 
-    def _recurse_modules(package, indent=0):
+    def _recurse_modules(package, indent: int = 0):
         for _, modname, ispkg in pkgutil.walk_packages(package.__path__):
             print("  " * indent + modname)
             if ispkg:

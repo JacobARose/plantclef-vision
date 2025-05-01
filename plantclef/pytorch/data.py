@@ -5,7 +5,7 @@ from functools import partial
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import ToTensor
 from plantclef.serde import deserialize_image
-from plantclef.torch.model import DINOv2LightningModel
+from plantclef.pytorch.model import DINOv2LightningModel
 
 
 def custom_collate_fn(batch, use_grid):

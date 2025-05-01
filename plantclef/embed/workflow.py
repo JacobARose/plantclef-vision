@@ -1,12 +1,12 @@
 import torch
 import pandas as pd
 import pytorch_lightning as pl
-from plantclef.torch.data import (
+from plantclef.pytorch.data import (
     PlantDataset,
     PlantDataModule,
     custom_collate_fn_partial,
 )
-from plantclef.torch.model import DINOv2LightningModel
+from plantclef.pytorch.model import DINOv2LightningModel
 from plantclef.config import get_device
 from torch.utils.data import DataLoader
 from tqdm import tqdm
