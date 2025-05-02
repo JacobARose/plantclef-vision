@@ -7,6 +7,7 @@ from . import (
     model_setup,
     plotting,
     serde,
+    spark_utils,
 )
 
 # import sys
@@ -21,6 +22,7 @@ __all__ = [
     "model_setup",
     "plotting",
     "serde",
+    "spark_utils",
 ]
 
 # print(f"Currently in file: {__file__}")
