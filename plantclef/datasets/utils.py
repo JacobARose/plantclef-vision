@@ -51,8 +51,19 @@ def collect_image_filepaths(dataset_dir) -> List[str]:
     """
     return [
         os.path.join(root, filename)
-        for root, _, filenames in tqdm(os.walk(dataset_dir), smoothing=0)
-        for filename in filenames
+        for root, _, filenames in tqdm(
+            os.walk(dataset_dir),
+            smoothing=0,
+            position=0,
+            desc=f"Walking through dir {dataset_dir}",
+        )
+        for filename in tqdm(
+            filenames,
+            total=len(filenames),
+            smoothing=0,
+            position=1,
+            desc=f"Collecting file paths in {root}",
+        )
     ]
 
 
