@@ -7,7 +7,7 @@ Created on Saturday May 3rd, 2025
 """
 
 import argparse
-from typing import Callable
+from typing import Callable, Optional
 import time
 from datasets import load_dataset, Dataset
 from torch.utils.data import DataLoader
@@ -153,7 +153,7 @@ def print_results(results):
 #################################
 
 
-def create_transform(image_size: int, key: str = None) -> Callable:
+def create_transform(image_size: int, key: Optional[str] = None) -> Callable:
     """Create image transformation pipeline that maintains aspect ratio."""
     transform_list = [
         # transforms.ToPILImage(),

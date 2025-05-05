@@ -1,9 +1,16 @@
+from abc import ABC, abstractmethod
+import pandas as pd
+from typing import Optional
 import torch
 import pytorch_lightning as pl
 
 from functools import partial
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as PyTorchDataset
 from torchvision.transforms import ToTensor
+from torchvision import transforms
+from datasets import Dataset as HFDataset
+
 from plantclef.serde import deserialize_image
 from plantclef.pytorch.model import DINOv2LightningModel
 
@@ -20,7 +27,167 @@ def custom_collate_fn_partial(use_grid):
     return partial(custom_collate_fn, use_grid=use_grid)
 
 
-class PlantDataset(Dataset):
+class BasePlantDataset(ABC, PyTorchDataset):
+    """Abstract base class for plant datasets."""
+
+    def __init__(
+        self,
+        transform: Optional[transforms.Compose] = None,
+        col_name: str = "data",
+        use_grid: bool = False,
+        grid_size: int = 4,
+    ):
+        """
+        Args:
+            transform: torchvision transforms.Compose object
+            col_name: Column name containing image data
+            use_grid: Whether to split images into a grid
+            grid_size: Size of the grid to split images into
+        """
+        self.transform = transform
+        self.col_name = col_name
+        self.use_grid = use_grid
+        self.grid_size = grid_size
+
+    @abstractmethod
+    def _load_data(self) -> None:
+        """Abstract method to load the dataset."""
+        pass
+
+    def _split_into_grid(self, image) -> list:
+        """Split an image into a grid of sub-images."""
+        image = transforms.ToPILImage()(image)
+        w, h = image.size
+        grid_w, grid_h = w // self.grid_size, h // self.grid_size
+        images = []
+        for i in range(self.grid_size):
+            for j in range(self.grid_size):
+                left = i * grid_w
+                upper = j * grid_h
+                right = left + grid_w
+                lower = upper + grid_h
+                crop_image = image.crop((left, upper, right, lower))
+                images.append(ToTensor()(crop_image))
+        return images
+
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        """Get an item from the dataset using memory-efficient loading."""
+
+        img = self._get_image_tensor(idx)
+
+        # Apply transforms to full image
+        if self.transform:
+            img = self.transform(img)
+
+        # Split into grid if required
+        if self.use_grid:
+            img_list = self._split_into_grid(img)
+            return torch.stack(img_list)
+        else:
+            return img
+
+    @abstractmethod
+    def _get_image_tensor(self, idx: int) -> torch.Tensor:
+        """Abstract method to get image tensor from the dataset."""
+        pass
+
+    @abstractmethod
+    def _get_image_bytes(self, idx: int) -> bytes:
+        """Abstract method to get image bytes from the dataset."""
+        pass
+
+
+class DataFramePlantDataset(BasePlantDataset):
+    """Plant dataset implementation using a pandas DataFrame."""
+
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        transform: Optional[transforms.Compose] = None,
+        col_name: str = "data",
+        use_grid: bool = False,
+        grid_size: int = 4,
+    ):
+        """
+        Args:
+            df: Pandas DataFrame containing image binary data
+            transform: torchvision transforms.Compose object
+            col_name: Column name containing image data
+            use_grid: Whether to split images into a grid
+            grid_size: Size of the grid to split images into
+        """
+        super().__init__(transform, col_name, use_grid, grid_size)
+        self.df = df
+
+    def _load_data(self) -> None:
+        """Load data from DataFrame."""
+        self.df = self.df.copy()
+
+    def _get_image_bytes(self, idx: int) -> bytes:
+        """Get image bytes from DataFrame."""
+        return self.df.iloc[idx][self.col_name]
+
+    def _get_image_tensor(self, idx: int) -> torch.Tensor:
+        example = self.df.iloc[idx, :]
+        img_bytes = example[self.col_name]
+
+        # Convert bytes to PIL image
+        img = deserialize_image(img_bytes)
+        return ToTensor()(img)
+
+    def __len__(self) -> int:
+        """Get the length of the dataset."""
+        return len(self.df)
+
+
+# print("about to define HFPlantDataset")
+class HFPlantDataset(BasePlantDataset):
+    """Plant dataset implementation using HuggingFace Dataset.load_from_disk."""
+
+    def __init__(
+        self,
+        path: str,
+        transform: Optional[transforms.Compose] = None,
+        col_name: str = "data",
+        use_grid: bool = False,
+        grid_size: int = 4,
+    ):
+        """
+        Args:
+            path: Path to the saved dataset on disk
+            transform: torchvision transforms.Compose object
+            col_name: Column name containing image data
+            use_grid: Whether to split images into a grid
+            grid_size: Size of the grid to split images into
+        """
+        super().__init__(transform, col_name, use_grid, grid_size)
+        self._load_data(path)
+
+    def _load_data(self, path: str) -> None:
+        """Load data from disk using HuggingFace Dataset."""
+        self.dataset = HFDataset.load_from_disk(path)
+
+    def _get_image_tensor(self, idx: int) -> torch.Tensor:
+        example = self.dataset[idx]
+        pil_img = example[self.col_name]
+        return ToTensor()(pil_img)
+
+    def _get_image_bytes(self, idx: int) -> bytes:
+        pass
+
+    #     """Get image bytes from HuggingFace Dataset."""
+    #     return self.df.iloc[idx][self.col_name]
+
+    def __len__(self) -> int:
+        """Get the length of the dataset."""
+        return len(self.dataset)
+
+    def __repr__(self) -> str:
+        """String representation of the dataset."""
+        return f"HFPlantDataset(\n{self.dataset.__repr__()}\n)"
+
+
+class PlantDataset(PyTorchDataset):
     """Custom PyTorch Dataset for loading plant images from a Pandas DataFrame."""
 
     def __init__(
