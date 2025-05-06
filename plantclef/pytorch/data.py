@@ -117,6 +117,24 @@ class BasePlantDataset(ABC, PyTorchDataset):
         """Abstract method to get image bytes from the dataset."""
         pass
 
+    def get_transforms(self, image_size: Optional[int] = None):
+        image_size = image_size or 518
+        return transforms.Compose(
+            [
+                transforms.Resize(
+                    size=518,
+                    interpolation=transforms.InterpolationMode.BICUBIC,
+                    max_size=None,
+                    antialias=True,
+                ),
+                transforms.CenterCrop(size=(image_size, image_size)),
+                # transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.4850, 0.4560, 0.4060], std=[0.2290, 0.2240, 0.2250]
+                ),
+            ]
+        )
+
     @classmethod
     def center_crop(cls, image: torch.Tensor) -> torch.Tensor:
         min_dim = min(image.shape[1:])

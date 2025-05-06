@@ -1,7 +1,9 @@
+from typing import Optional
 import torch
 import pandas as pd
 import pytorch_lightning as pl
 from plantclef.pytorch.data import (
+    HFPlantDataset,
     PlantDataset,
     PlantDataModule,
     custom_collate_fn_partial,
@@ -13,7 +15,8 @@ from tqdm import tqdm
 
 
 def torch_pipeline(
-    pandas_df: pd.DataFrame,
+    pandas_df: Optional[pd.DataFrame] = None,
+    dataset: Optional[HFPlantDataset] = None,
     batch_size: int = 32,
     use_grid: bool = False,
     grid_size: int = 1,
@@ -34,13 +37,19 @@ def torch_pipeline(
     # initialize model
     model = DINOv2LightningModel(top_k=top_k)
 
-    # create Dataset
-    dataset = PlantDataset(
-        pandas_df,
-        model.transform,
-        use_grid=use_grid,
-        grid_size=grid_size,
-    )
+    if dataset is None:
+        # check if pandas_df is provided
+        if pandas_df is None:
+            raise ValueError("Either pandas_df or dataset must be provided.")
+
+        # create dataset from pandas DataFrame
+        dataset = PlantDataset(
+            pandas_df,
+            model.transform,
+            use_grid=use_grid,
+            grid_size=grid_size,
+        )
+
     # create DataLoader
     dataloader = DataLoader(
         dataset,

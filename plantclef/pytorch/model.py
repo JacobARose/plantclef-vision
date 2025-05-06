@@ -26,6 +26,7 @@ class DINOv2LightningModel(pl.LightningModule):
             pretrained=False,
             num_classes=self.num_classes,
             checkpoint_path=model_path,
+            dynamic_img_size=True,
         )
 
         # load transform
