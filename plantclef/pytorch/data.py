@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import matplotlib.pyplot as plt
 import pandas as pd
 from typing import Optional
 import torch
@@ -10,7 +11,7 @@ from torch.utils.data import Dataset as PyTorchDataset
 from torchvision.transforms import ToTensor
 from torchvision import transforms
 from datasets import Dataset as HFDataset
-
+import PIL
 from plantclef.serde import deserialize_image
 from plantclef.pytorch.model import DINOv2LightningModel
 
@@ -54,21 +55,41 @@ class BasePlantDataset(ABC, PyTorchDataset):
         """Abstract method to load the dataset."""
         pass
 
-    def _split_into_grid(self, image) -> list:
-        """Split an image into a grid of sub-images."""
-        image = transforms.ToPILImage()(image)
-        w, h = image.size
-        grid_w, grid_h = w // self.grid_size, h // self.grid_size
-        images = []
-        for i in range(self.grid_size):
-            for j in range(self.grid_size):
-                left = i * grid_w
-                upper = j * grid_h
+    # def _split_into_grid(self, image) -> list:
+    #     """Split an image into a grid of sub-images."""
+    #     image = transforms.ToPILImage()(image)
+    #     w, h = image.size
+    #     grid_w, grid_h = w // self.grid_size, h // self.grid_size
+    #     images = []
+    #     for i in range(self.grid_size):
+    #         for j in range(self.grid_size):
+    #             left = i * grid_w
+    #             upper = j * grid_h
+    #             right = left + grid_w
+    #             lower = upper + grid_h
+    #             crop_image = image.crop((left, upper, right, lower))
+    #             images.append(ToTensor()(crop_image))
+    #     return images
+
+    def _split_into_grid(
+        self, image: torch.Tensor, grid_size: Optional[int] = None
+    ) -> list:
+        grid_size = grid_size or self.grid_size
+        c, h, w = image.shape  # Extract height, width, and channels
+        grid_h = h // grid_size
+        grid_w = w // grid_size  # Tile size
+
+        tiles = []
+        for i in range(grid_size):
+            for j in range(grid_size):
+                top = i * grid_h
+                left = j * grid_w
+                bottom = top + grid_h
                 right = left + grid_w
-                lower = upper + grid_h
-                crop_image = image.crop((left, upper, right, lower))
-                images.append(ToTensor()(crop_image))
-        return images
+                tile = image[:, top:bottom, left:right]  # Slice the torch.Tensor
+                tiles.append(tile)
+
+        return tiles  # Returns a list of torch.Tensors
 
     def __getitem__(self, idx: int) -> torch.Tensor:
         """Get an item from the dataset using memory-efficient loading."""
@@ -95,6 +116,85 @@ class BasePlantDataset(ABC, PyTorchDataset):
     def _get_image_bytes(self, idx: int) -> bytes:
         """Abstract method to get image bytes from the dataset."""
         pass
+
+    @classmethod
+    def center_crop(cls, image: torch.Tensor) -> torch.Tensor:
+        min_dim = min(image.shape[1:])
+        return transforms.CenterCrop(min_dim)(image)
+
+    def plot_image_tiles(
+        self,
+        idx: int,
+        grid_size: Optional[int] = None,
+        figsize: tuple = (15, 8),
+        dpi: int = 100,
+        skip_transforms: bool = False,
+    ):
+        """
+        Display an original image and its tiles in a single figure.
+
+
+        :param idx:
+        :param grid_size: Number of tiles per row/column (grid_size x grid_size).
+        :param figsize: Figure size (width, height).
+        :param dpi: Dots per inch (image resolution).
+
+
+        [] [TODO] -- Add option to include axis labels with x & y resolution visible on 1 of the grid_size x grid_size tiles
+        """
+
+        image = self._get_image_tensor(idx)
+        if not skip_transforms:
+            image = self.transform(image)
+
+        image = self.center_crop(image)  # Ensure a square crop
+
+        # split image into tiles
+        image_tiles = self._split_into_grid(image, grid_size)
+
+        image_name = ""  # TBD
+        grid_size = grid_size or self.grid_size
+
+        # create figure with 1 row and 2 columns (original image | 3x3 grid)
+        fig, axes = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
+
+        # Set main titles for left and right plots
+        fig.text(0.25, 0.97, "Image", fontsize=20, fontweight="bold", ha="center")
+        fig.text(0.75, 0.97, "Image Tiles", fontsize=20, fontweight="bold", ha="center")
+
+        # plot original image on the left
+        axes_left = axes[0]
+        axes_left.imshow(image)
+        axes_left.set_title(image_name, fontsize=20)
+        axes_left.set_xticks([])
+        axes_left.set_yticks([])
+        spines = ["top", "right", "bottom", "left"]
+        for spine in spines:
+            axes_left.spines[spine].set_visible(False)
+
+        # plot the grid of tiles on the right
+        gs = fig.add_gridspec(1, 2)[1]
+        grid_axes = gs.subgridspec(grid_size, grid_size)
+
+        for idx, tile in enumerate(image_tiles):
+            row, col = divmod(idx, grid_size)
+            ax = fig.add_subplot(grid_axes[row, col])
+            ax.imshow(tile)
+            ax.set_xlabel(f"Tile {idx+1}", fontsize=15)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            for s in spines:
+                ax.spines[s].set_visible(False)
+
+        ax_right = axes[1]
+        ax_right.set_title(f"{grid_size}x{grid_size} grid of tiles", fontsize=20)
+        ax_right.set_xticks([])
+        ax_right.set_yticks([])
+        ax_right.axis("off")
+
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.9)
+        plt.show()
 
 
 class DataFramePlantDataset(BasePlantDataset):
@@ -161,11 +261,18 @@ class HFPlantDataset(BasePlantDataset):
             grid_size: Size of the grid to split images into
         """
         super().__init__(transform, col_name, use_grid, grid_size)
+        self.path = path
         self._load_data(path)
 
     def _load_data(self, path: str) -> None:
         """Load data from disk using HuggingFace Dataset."""
         self.dataset = HFDataset.load_from_disk(path)
+
+    def _get_image_pil(self, idx: int) -> PIL.Image.Image:
+        """Get image as PIL.Image from HuggingFace Dataset."""
+        example = self.dataset[idx]
+        pil_img = example[self.col_name]
+        return pil_img
 
     def _get_image_tensor(self, idx: int) -> torch.Tensor:
         example = self.dataset[idx]
