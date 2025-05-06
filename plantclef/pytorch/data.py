@@ -129,6 +129,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
         figsize: tuple = (15, 8),
         dpi: int = 100,
         skip_transforms: bool = False,
+        normalize_pixel_values: bool = True,
     ):
         """
         Display an original image and its tiles in a single figure.
@@ -149,6 +150,10 @@ class BasePlantDataset(ABC, PyTorchDataset):
 
         image = self.center_crop(image)  # Ensure a square crop
 
+        # Scale pixel values to be within 0.0 and 1.0
+        max_val = torch.max(torch.abs(image))
+        image = (image / max_val + 1.0) / 2.0
+
         # split image into tiles
         image_tiles = self._split_into_grid(image, grid_size)
 
@@ -164,7 +169,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
 
         # plot original image on the left
         axes_left = axes[0]
-        axes_left.imshow(image)
+        axes_left.imshow(image.permute(1, 2, 0))
         axes_left.set_title(image_name, fontsize=20)
         axes_left.set_xticks([])
         axes_left.set_yticks([])
@@ -176,10 +181,16 @@ class BasePlantDataset(ABC, PyTorchDataset):
         gs = fig.add_gridspec(1, 2)[1]
         grid_axes = gs.subgridspec(grid_size, grid_size)
 
+        if type(image_tiles) is torch.Tensor:
+            assert (
+                image_tiles.shape[0] == grid_size**2
+            ), f"Expected {grid_size**2} tiles, got {image_tiles.shape[0]}"
+            image_tiles = torch.split(image_tiles, 1, dim=0)
+
         for idx, tile in enumerate(image_tiles):
             row, col = divmod(idx, grid_size)
             ax = fig.add_subplot(grid_axes[row, col])
-            ax.imshow(tile)
+            ax.imshow(tile.permute(1, 2, 0))
             ax.set_xlabel(f"Tile {idx+1}", fontsize=15)
             ax.set_xticks([])
             ax.set_yticks([])
