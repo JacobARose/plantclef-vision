@@ -11,7 +11,7 @@ from torch.utils.data import Dataset as PyTorchDataset
 from torchvision.transforms import ToTensor
 from torchvision import transforms
 from datasets import Dataset as HFDataset
-import PIL
+import PIL.Image
 from plantclef.serde import deserialize_image
 from plantclef.pytorch.model import DINOv2LightningModel
 
@@ -122,7 +122,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
         return transforms.Compose(
             [
                 transforms.Resize(
-                    size=518,
+                    size=image_size,
                     interpolation=transforms.InterpolationMode.BICUBIC,
                     max_size=None,
                     antialias=True,
