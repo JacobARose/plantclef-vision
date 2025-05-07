@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import pytorch_lightning as pl
 from plantclef.pytorch.data import (
+    HFDataset,
     HFPlantDataset,
     PlantDataModule,
     custom_collate_fn_partial,
@@ -148,7 +149,7 @@ class Config:
     use_grid: bool = True
     grid_size: int = 3
     image_size: int = 546
-    batch_size: int = 4
+    batch_size: int = 16
     cpu_count: int = os.cpu_count() or 1
     top_k: int = 5
 
@@ -204,7 +205,7 @@ def make_predictions_and_save(
 
     pred_df = create_predictions_df(ds, embeddings, logits)
 
-    pred_ds = HFPlantDataset.from_pandas(pred_df)
+    pred_ds = HFDataset.from_pandas(pred_df)
     pred_ds.save_to_disk(cfg.test_embeddings_path)
 
     print(f"Predictions saved to {cfg.test_embeddings_path}")
