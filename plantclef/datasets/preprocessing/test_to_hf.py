@@ -5,6 +5,9 @@ Created by: Jacob A Rose
 
 
 Load the directory of test images from plantclef 2025 into a Hugging Face Dataset, and write it to disk for later efficient reading during model embedding/inference.
+
+(Added Tuesday May 6th, 2025)
+    * Running this on the free lightning studio environment just took less than 60 seconds.
 """
 
 from datasets import Image, Value, Dataset as HFDataset
