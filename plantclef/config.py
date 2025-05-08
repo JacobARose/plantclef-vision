@@ -7,6 +7,7 @@ from collections import Counter
 
 import json
 from dataclasses import dataclass, asdict
+from rich import print as pprint
 from typing import Optional
 
 # T = TypeVar("T")
@@ -47,6 +48,10 @@ class BaseConfig:
             value = getattr(self, field_name)
             # Always show the field (no default hiding)
             yield field_name, value, None
+
+    def show(self):
+        """Print the dataclass in a readable format."""
+        pprint(self)
 
 
 def get_torch_version():

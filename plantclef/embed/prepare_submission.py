@@ -175,8 +175,11 @@ def main():
 
     print("Submission file created successfully!")
     print(f"Submission file saved to {cfg.test_submission_path}")
-
     print_dir_size(cfg.test_submission_path)
+
+    cfg.save(path=cfg.config_path, indent=4)
+    print(f"Config file saved to {cfg.config_path}")
+    cfg.show()
 
 
 if __name__ == "__main__":

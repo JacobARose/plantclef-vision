@@ -185,6 +185,7 @@ class Config(BaseConfig):
     folder_name: str = ""
     test_embeddings_path: str = ""
     test_submission_path: str = ""
+    config_path: str = ""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -195,8 +196,14 @@ class Config(BaseConfig):
         self.test_submission_path = (
             f"{self.test_embeddings_dir}/{self.folder_name}-submission.csv"
         )
+        self.config_path = f"{self.test_embeddings_path}-config.json"
 
-    def save(self, path: Optional[str] = None, indent: Optional[int] = None) -> None:
+    def save(
+        self,
+        path: Optional[str] = None,
+        indent: Optional[int] = None,
+        exist_ok: bool = True,
+    ) -> str:
         """
         Save the config parameters to a JSON file.
 
@@ -208,12 +215,15 @@ class Config(BaseConfig):
             filename: Path to save the file
             indent: Optional indentation for pretty printing (None for compact)
         """
-        if path is None:
-            path = f"{self.test_embeddings_path}-config"
+
+        path = path or self.config_path
+
         if not path.endswith(".json"):
             path = f"{path}.json"
 
-        super().save(path, indent)
+        super().save(path, indent, exist_ok=exist_ok)
+        self.config_path = path
+        return self.config_path
 
 
 def make_predictions_and_save(
