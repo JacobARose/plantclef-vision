@@ -151,7 +151,7 @@ def prepare_submission(ds: HFDataset, top_k: int = 5) -> pd.DataFrame:
     df = df.assign(
         species_ids=df.apply(
             lambda x: [  # Select only the species IDs
-                species_id for species_id, _ in x["species_ids"]
+                int(species_id) for species_id, _ in x["species_ids"]
             ],
             axis=1,
         )
@@ -183,10 +183,10 @@ def main():
 
 
 if __name__ == "__main__":
-    print(f"[INFO] -- script {__file__} started at {print_current_time()}")
+    print(f"[INFO] -- script {__file__} started at")
+    print_current_time()
 
     main()
 
-    print(
-        f"[SUCCESS] -- script {__file__} completed successfully at {print_current_time()}"
-    )
+    print(f"[SUCCESS] -- script {__file__} completed successfully at")
+    print_current_time()
