@@ -35,6 +35,7 @@ def torch_pipeline(
     :param grid_size: Number of grid cells to split each image into if use_grid is True.
     :param cpu_count: Number of CPU cores to use for DataLoader.
     :param top_k: Number of top logits to extract.
+    :param device: Device to use for inference. If None, will use GPU if available, otherwise CPU.
     """
 
     # initialize model
@@ -218,6 +219,7 @@ def make_predictions_and_save(
         grid_size=cfg.grid_size,
         cpu_count=cfg.cpu_count,
         top_k=cfg.top_k,
+        device=cfg.device,
     )
 
     pred_df = create_predictions_df(ds, embeddings, logits)
