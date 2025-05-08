@@ -45,7 +45,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
             use_grid: Whether to split images into a grid
             grid_size: Size of the grid to split images into
         """
-        self.transform = transform
+        self.transform = transform or (lambda x: x)
         self.col_name = col_name
         self.use_grid = use_grid
         self.grid_size = grid_size

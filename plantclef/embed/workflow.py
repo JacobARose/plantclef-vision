@@ -1,3 +1,15 @@
+"""
+file: plantclef/embed/workflow.py
+Created around: April/May, 2025
+Created by: Jacob A Rose
+
+
+If you run this script, it will create embeddings and logits for the full unlabeled quadrat test set using a 3x3 tile grid input to the DINOv2 model and save them to disk.
+
+
+
+"""
+
 from dataclasses import dataclass
 from typing import Optional
 import torch
@@ -12,7 +24,7 @@ from plantclef.pytorch.data import (
 )
 from plantclef.pytorch.model import DINOv2LightningModel
 from plantclef.embed.utils import print_current_time, print_dir_size
-from plantclef.config import get_device
+from plantclef.config import get_device, BaseConfig
 from rich.repr import auto
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -155,7 +167,7 @@ def create_predictions_df(
 
 @dataclass
 @auto
-class Config:
+class Config(BaseConfig):
     use_grid: bool = True
     grid_size: int = 3
     image_size: int = 546
@@ -172,6 +184,7 @@ class Config:
     test_embeddings_dir: str = ""
     folder_name: str = ""
     test_embeddings_path: str = ""
+    test_submission_path: str = ""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -179,13 +192,28 @@ class Config:
         self.test_embeddings_dir = f"{self.embeddings_dir}/full_test"
         self.folder_name = f"test_grid_{self.grid_size}x{self.grid_size}_embeddings"
         self.test_embeddings_path = f"{self.test_embeddings_dir}/{self.folder_name}"
+        self.test_submission_path = (
+            f"{self.test_embeddings_dir}/{self.folder_name}-submission.csv"
+        )
 
-    def __rich_repr__(self):
-        # Get all fields from the dataclass
-        for field_name in self.__dataclass_fields__:
-            value = getattr(self, field_name)
-            # Always show the field (no default hiding)
-            yield field_name, value, None
+    def save(self, path: Optional[str] = None, indent: Optional[int] = None) -> None:
+        """
+        Save the config parameters to a JSON file.
+
+        If path is None, the config will be saved to the default path.
+
+        To load, use `cfg = Config.load(path)`.
+
+        Args:
+            filename: Path to save the file
+            indent: Optional indentation for pretty printing (None for compact)
+        """
+        if path is None:
+            path = f"{self.test_embeddings_path}-config"
+        if not path.endswith(".json"):
+            path = f"{path}.json"
+
+        super().save(path, indent)
 
 
 def make_predictions_and_save(
@@ -196,11 +224,12 @@ def make_predictions_and_save(
     """
 
     # Create the directory if it doesn't exist
+    print(f"[RUNNING] os.makedirs({cfg.test_embeddings_dir}, exist_ok=True)")
     os.makedirs(cfg.test_embeddings_dir, exist_ok=True)
 
     ds = HFPlantDataset(
         path=cfg.hf_dataset_dir,
-        transform=None,  # model.transform,
+        transform=None,
         col_name="image",
         use_grid=cfg.use_grid,
         grid_size=cfg.grid_size,
