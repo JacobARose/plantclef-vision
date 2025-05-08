@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 import torch
 import os
@@ -10,19 +11,21 @@ from plantclef.pytorch.data import (
     custom_collate_fn_partial,
 )
 from plantclef.pytorch.model import DINOv2LightningModel
-from plantclef.embed.utils import print_current_time
+from plantclef.embed.utils import print_current_time, print_dir_size
 from plantclef.config import get_device
+from rich.repr import auto
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 
 def torch_pipeline(
-    dataset: Optional[HFPlantDataset] = None,
+    dataset: HFPlantDataset,
     batch_size: int = 32,
     use_grid: bool = False,
     grid_size: int = 1,
     cpu_count: int = 1,
     top_k: int = 5,
+    device: Optional[str] = None,
 ):
     """
     Pipeline to extract embeddings and top-K logits using PyTorch Lightning.
@@ -36,6 +39,10 @@ def torch_pipeline(
 
     # initialize model
     model = DINOv2LightningModel(top_k=top_k)
+
+    # set device to GPU if available, otherwise CPU
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     # create DataLoader
     dataloader = DataLoader(
@@ -53,7 +60,7 @@ def torch_pipeline(
         dataloader, desc="Extracting embeddings and logits", unit="batch"
     ):
         embeddings, logits = model.predict_grid_step(batch, batch_idx=0)
-        all_embeddings.append(embeddings)
+        all_embeddings.append(embeddings.cpu())
         # Each image in the batch gets a list of grid_size**2 dicts, each containing the top-k logits for that grid tile
         all_logits.extend(logits)
 
@@ -92,7 +99,7 @@ def pl_trainer_pipeline(
     )
 
     # run Inference
-    predictions = trainer.predict(model, datamodule=data_module)
+    predictions = trainer.predict(model, datamodule=data_module) or []
 
     all_embeddings = []
     all_logits = []
@@ -145,6 +152,8 @@ def create_predictions_df(
     return explode_df
 
 
+@dataclass
+@auto
 class Config:
     use_grid: bool = True
     grid_size: int = 3
@@ -152,15 +161,16 @@ class Config:
     batch_size: int = 16
     cpu_count: int = os.cpu_count() or 1
     top_k: int = 5
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     root_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025"
     dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/competition-metadata/PlantCLEF2025_test_images/PlantCLEF2025_test_images"
     hf_dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/parquet/plantclef2025/full_test/HF_dataset"
 
-    embeddings_dir: str = None
-    test_embeddings_dir: str = None
-    folder_name: str = None
-    test_embeddings_path: str = None
+    embeddings_dir: str = ""
+    test_embeddings_dir: str = ""
+    folder_name: str = ""
+    test_embeddings_path: str = ""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -168,6 +178,13 @@ class Config:
         self.test_embeddings_dir = f"{self.embeddings_dir}/full_test"
         self.folder_name = f"test_grid_{self.grid_size}x{self.grid_size}_embeddings"
         self.test_embeddings_path = f"{self.test_embeddings_dir}/{self.folder_name}"
+
+    def __rich_repr__(self):
+        # Get all fields from the dataclass
+        for field_name in self.__dataclass_fields__:
+            value = getattr(self, field_name)
+            # Always show the field (no default hiding)
+            yield field_name, value, None
 
 
 def make_predictions_and_save(
@@ -211,8 +228,15 @@ def make_predictions_and_save(
     print(f"Predictions saved to {cfg.test_embeddings_path}")
     print_current_time()
 
+    print_dir_size(cfg.test_embeddings_dir)
+
 
 def run_embed_test():
+    """
+
+    Create embeddings from the full test set using the DINOv2 model and save them to disk.
+
+    """
     cfg = Config()
     try:
         make_predictions_and_save(cfg)
