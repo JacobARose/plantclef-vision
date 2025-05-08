@@ -5,6 +5,49 @@ import pandas as pd
 from pathlib import Path
 from collections import Counter
 
+import json
+from dataclasses import dataclass, asdict
+from typing import Optional
+
+# T = TypeVar("T")
+
+
+@dataclass
+class BaseConfig:
+    def save(
+        self, path: str, indent: Optional[int] = None, exist_ok: bool = True
+    ) -> None:
+        """Save the dataclass to a JSON file.
+
+        Args:
+            filename: Path to save the file. Should end with .json
+            indent: Optional indentation for pretty printing (None for compact)
+        """
+        os.makedirs(os.path.dirname(path), exist_ok=exist_ok)
+        with open(path, "w") as f:
+            json.dump(asdict(self), f, indent=indent)
+
+    @classmethod
+    def load(cls, filename: str):
+        """Load the dataclass from a JSON file.
+
+        Args:
+            filename: Path to the JSON file
+
+        Returns:
+            An instance of the dataclass
+        """
+        with open(filename, "r") as f:
+            data = json.load(f)
+        return cls(**data)
+
+    def __rich_repr__(self):
+        # Get all fields from the dataclass
+        for field_name in self.__dataclass_fields__:
+            value = getattr(self, field_name)
+            # Always show the field (no default hiding)
+            yield field_name, value, None
+
 
 def get_torch_version():
     return torch.__version__
