@@ -22,6 +22,7 @@ import more_itertools as mit
 import pandas as pd
 from typing import Tuple, List
 from plantclef.embed.workflow import Config
+from plantclef.embed.utils import print_dir_size, print_current_time
 
 
 def remove_NaN_values_from_dict(d: dict) -> dict:
@@ -174,3 +175,15 @@ def main():
 
     print("Submission file created successfully!")
     print(f"Submission file saved to {cfg.test_submission_path}")
+
+    print_dir_size(cfg.test_submission_path)
+
+
+if __name__ == "__main__":
+    print(f"[INFO] -- script {__file__} started at {print_current_time()}")
+
+    main()
+
+    print(
+        f"[SUCCESS] -- script {__file__} completed successfully at {print_current_time()}"
+    )
