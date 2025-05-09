@@ -7,6 +7,7 @@ from collections import Counter
 
 import json
 from dataclasses import dataclass, asdict
+from rich.repr import auto
 from rich import print as pprint
 from typing import Optional
 
@@ -14,6 +15,7 @@ from typing import Optional
 
 
 @dataclass
+@auto
 class BaseConfig:
     def save(
         self, path: str, indent: Optional[int] = None, exist_ok: bool = True
