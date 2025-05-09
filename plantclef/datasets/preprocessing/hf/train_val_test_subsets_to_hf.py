@@ -23,6 +23,7 @@ from plantclef.config import BaseConfig
 from dataclasses import dataclass, field
 from rich.repr import auto
 from torchvision import transforms
+from datasets import Dataset as HFDataset, DatasetDict as HFDatasetDict, Image
 
 
 def default_image_size():
@@ -188,13 +189,63 @@ def get_dict_transform(transform_kwargs={}, input_columns=None) -> Callable:
     return func
 
 
-def create_single_label_hf_dataset():
+def create_single_label_hf_dataset(cfg: Optional[Config] = None) -> HFDatasetDict:
     """ """
 
+    cfg = cfg or Config()
 
-def main():
-    cfg = Config()
+    class2idx = cfg.load_class_index(mode="class2idx")
+    metadata = cfg.load_metadata()
+    metadata = cfg.encode_target_col(metadata, class2idx=class2idx)
+    keep_cols = [
+        "image_path",
+        "label_idx",
+        "image_name",
+        "organ",
+        "species_id",
+        "obs_id",
+        "author",
+        "altitude",
+        "latitude",
+        "longitude",
+        "species",
+        "genus",
+        "family",
+        "learn_tag",
+    ]
+
+    metadata = metadata[keep_cols]
+
+    train_df = metadata[metadata["learn_tag"] == "train"]
+    val_df = metadata[metadata["learn_tag"] == "val"]
+    test_df = metadata[metadata["learn_tag"] == "test"]
+
+    train_ds = HFDataset.from_pandas(train_df)
+    val_ds = HFDataset.from_pandas(val_df)
+    test_ds = HFDataset.from_pandas(test_df)
+
+    dataset = HFDatasetDict({"train": train_ds, "val": val_ds, "test": test_ds})
+    dataset = dataset.cast_column(cfg.x_col, Image())
+
+    tx = get_dict_transform(
+        transform_kwargs={"image_size": {"shortest_edge": 716}}, input_columns=cfg.x_col
+    )
+
+    dataset = dataset.map(tx, input_columns=cfg.x_col, num_proc=4)
+
+    return dataset
+
+
+def main(cfg: Optional[Config] = None) -> None:
+    cfg = cfg or Config()
     cfg.show()
+
+    # Creating the resized image HFDataset with metadata columns
+    dataset = create_single_label_hf_dataset(cfg)
+
+    # [TODO] -- (7:55 AM Fri May 9th, 2025) -- Add on the dataset.save_to_disk step
+
+    print(dataset)
 
 
 if __name__ == "__main__":
