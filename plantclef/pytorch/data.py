@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import pandas as pd
-from typing import Optional
+from typing import Optional, Dict
 import torch
 import pytorch_lightning as pl
 
@@ -117,18 +117,22 @@ class BasePlantDataset(ABC, PyTorchDataset):
         """Abstract method to get image bytes from the dataset."""
         pass
 
-    def get_transforms(self, image_size: Optional[int] = None):
-        image_size = image_size or 518
+    def get_transforms(
+        self,
+        image_size: Optional[Dict[str, int]] = None,
+        crop_size: Optional[Dict[str, int]] = None,
+    ):
+        image_size = image_size or {"shortest_edge": 588}
+        crop_size = crop_size or {"height": 588, "width": 588}
         return transforms.Compose(
             [
                 transforms.Resize(
-                    size=image_size,
+                    size=image_size["shortest_edge"],
                     interpolation=transforms.InterpolationMode.BICUBIC,
                     max_size=None,
                     antialias=True,
                 ),
-                transforms.CenterCrop(size=(image_size, image_size)),
-                # transforms.ToTensor(),
+                transforms.CenterCrop(size=(crop_size["height"], crop_size["width"])),
                 transforms.Normalize(
                     mean=[0.4850, 0.4560, 0.4060], std=[0.2290, 0.2240, 0.2250]
                 ),
