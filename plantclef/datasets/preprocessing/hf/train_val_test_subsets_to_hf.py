@@ -284,10 +284,6 @@ def create_single_label_hf_dataset(
         print(f"[INITIATING dataset.map(resize)] -- using num_proc={os.cpu_count()}")
         dataset = dataset.cast_column(cfg.x_col, Image())
         dataset = dataset.map(tx, input_columns=cfg.x_col, num_proc=os.cpu_count())
-<<<<<<< HEAD
-        print("[ds.map(Resize) COMPLETE]")
-=======
->>>>>>> c46c6e8 (Initial run had a process crash after ~320,000 images. Now attempting a batched map using multithreading and multiprocessing)
     else:
         from functools import partial
 
@@ -299,12 +295,9 @@ def create_single_label_hf_dataset(
             return_as_dict_key=cfg.x_col,
             num_threads=num_threads,
         )
-<<<<<<< HEAD
-=======
         print(
             f"[INITIATING dataset.map(resize)] -- using num_proc={os.cpu_count()} and num_threads={num_threads}"
         )
->>>>>>> c46c6e8 (Initial run had a process crash after ~320,000 images. Now attempting a batched map using multithreading and multiprocessing)
         dataset = dataset.map(
             tx,
             input_columns=cfg.x_col,
@@ -312,10 +305,7 @@ def create_single_label_hf_dataset(
             batched=True,
             batch_size=batch_size,
         )
-<<<<<<< HEAD
-=======
     print("[ds.map(Resize) COMPLETE]")
->>>>>>> c46c6e8 (Initial run had a process crash after ~320,000 images. Now attempting a batched map using multithreading and multiprocessing)
     print_current_time()
 
     return dataset
