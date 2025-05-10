@@ -159,6 +159,19 @@ class Config(BaseConfig):
             )
         return data_df
 
+    def get_shard_path(self, shard_idx: int, shard_size: int, total_size: int) -> str:
+        """
+        Helper function for getting a formatted arrow file path str given the
+            shard_idx: int - Current shard index number
+            shard_size: int - The number of samples per shard
+            total_size: int - The total number of samples across all shards
+        """
+
+        return os.path.join(
+            self.hf_dataset_path,
+            f"data_shard_{shard_idx * shard_size}_{min((shard_idx + 1) * shard_size, total_size)}.arrow",
+        )
+
 
 def get_transforms(
     image_size: Optional[Dict[str, int]] = None,
