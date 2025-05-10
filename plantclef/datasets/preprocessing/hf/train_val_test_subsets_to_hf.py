@@ -17,6 +17,7 @@ from plantclef.datasets.utils import (
     load_plantclef_class2idx,
     optimize_pandas_dtypes,
 )
+from plantclef.embed.utils import print_current_time, print_dir_size
 from typing import Dict, Optional, Callable
 
 from plantclef.config import BaseConfig
@@ -231,7 +232,7 @@ def create_single_label_hf_dataset(cfg: Optional[Config] = None) -> HFDatasetDic
         transform_kwargs={"image_size": {"shortest_edge": 716}}, input_columns=cfg.x_col
     )
 
-    dataset = dataset.map(tx, input_columns=cfg.x_col, num_proc=4)
+    dataset = dataset.map(tx, input_columns=cfg.x_col, num_proc=os.cpu_count())
 
     return dataset
 
@@ -243,9 +244,14 @@ def main(cfg: Optional[Config] = None) -> None:
     # Creating the resized image HFDataset with metadata columns
     dataset = create_single_label_hf_dataset(cfg)
 
-    # [TODO] -- (7:55 AM Fri May 9th, 2025) -- Add on the dataset.save_to_disk step
+    print("[ds.map(Resize) COMPLETE]")
+    print_current_time()
 
-    print(dataset)
+    dataset.save_to_disk(cfg.hf_dataset_path, num_proc=os.cpu_count())
+
+    print("[Dataset.save_to_disk() COMPLETE]")
+    print_current_time()
+    print_dir_size(cfg.hf_dataset_path)
 
 
 if __name__ == "__main__":
