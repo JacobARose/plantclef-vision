@@ -178,9 +178,12 @@ def get_transforms(
 
     if isinstance(crop_size, dict):
         if "height" in crop_size and "width" in crop_size:
-            tx.append(
-                transforms.CenterCrop(size=(crop_size["height"], crop_size["width"]))
-            )
+            if crop_size["height"] <= image_size["shortest_edge"]:
+                tx.append(
+                    transforms.CenterCrop(
+                        size=(crop_size["height"], crop_size["width"])
+                    )
+                )
 
     return transforms.Compose(tx)
 
@@ -296,7 +299,8 @@ def create_single_label_hf_dataset(
             num_threads=num_threads,
         )
         print(
-            f"[INITIATING dataset.map(resize)] -- using num_proc={os.cpu_count()} and num_threads={num_threads}"
+            f"[INITIATING dataset.map(resize)] -- using num_proc={os.cpu_count()} and num_threads={num_threads},",
+            f"batch_size={batch_size}",
         )
         dataset = dataset.map(
             tx,
@@ -316,7 +320,7 @@ def main(cfg: Optional[Config] = None) -> None:
     cfg.show()
 
     # Creating the resized image HFDataset with metadata columns
-    dataset = create_single_label_hf_dataset(cfg, batch_size=1000)
+    dataset = create_single_label_hf_dataset(cfg, batch_size=500)
 
     print("[INITIATING dataset.save_to_disk()]")
 
