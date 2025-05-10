@@ -6,6 +6,11 @@ Created by: Jacob A Rose
 
 Load train, val, and test subsets of the single-label full train set from disk, convert to Hugging Face Dataset, then save_to_disk for later efficient reading during model embedding/inference/training.
 
+
+Example:
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py"
+
 """
 
 import os
@@ -18,7 +23,10 @@ from plantclef.datasets.utils import (
     optimize_pandas_dtypes,
 )
 from plantclef.embed.utils import print_current_time, print_dir_size
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional, Callable, List, Union, Any
+from concurrent.futures import ThreadPoolExecutor
+import torch
+import PIL.Image
 
 from plantclef.config import BaseConfig
 from dataclasses import dataclass, field
@@ -190,11 +198,40 @@ def get_dict_transform(transform_kwargs={}, input_columns=None) -> Callable:
     return func
 
 
-def create_single_label_hf_dataset(cfg: Optional[Config] = None) -> HFDatasetDict:
-    """ """
+def transform_image_batch(
+    batch: List[str],
+    transform: Callable,
+    return_as_dict_key: Optional[str] = None,
+    num_threads: Optional[int] = None,
+) -> Union[List[Any], Dict[str, List[Any]]]:
+    """Process a batch of images using multiple threads."""
+    results = []
 
-    cfg = cfg or Config()
+    def process_single_image(path: str) -> torch.Tensor:
+        try:
+            with PIL.Image.open(path) as img:
+                # Convert to RGB if not already
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                # Apply transform and convert to tensor
+                tensor = transform(img)
+                return tensor
+        except Exception as e:
+            print(f"Error processing {path}: {e}")
+            return torch.zeros((3, 588, 588))  # Return dummy tensor on error
 
+    num_threads = num_threads or 0
+
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = {executor.submit(process_single_image, path): path for path in batch}
+        for future in futures:
+            results.append(future.result())
+    if isinstance(return_as_dict_key, str):
+        results = {return_as_dict_key: results}
+    return results
+
+
+def preprocess_hf_dataset(cfg):
     class2idx = cfg.load_class_index(mode="class2idx")
     metadata = cfg.load_metadata()
     metadata = cfg.encode_target_col(metadata, class2idx=class2idx)
@@ -226,13 +263,47 @@ def create_single_label_hf_dataset(cfg: Optional[Config] = None) -> HFDatasetDic
     test_ds = HFDataset.from_pandas(test_df)
 
     dataset = HFDatasetDict({"train": train_ds, "val": val_ds, "test": test_ds})
-    dataset = dataset.cast_column(cfg.x_col, Image())
+
+    return dataset
+
+
+def create_single_label_hf_dataset(
+    cfg: Optional[Config] = None, batch_size: Optional[int] = None
+) -> HFDatasetDict:
+    """ """
+
+    cfg = cfg or Config()
+
+    dataset = preprocess_hf_dataset(cfg)
 
     tx = get_dict_transform(
         transform_kwargs={"image_size": {"shortest_edge": 716}}, input_columns=cfg.x_col
     )
 
-    dataset = dataset.map(tx, input_columns=cfg.x_col, num_proc=os.cpu_count())
+    if batch_size is None:
+        print(f"[INITIATING dataset.map(resize)] -- using num_proc={os.cpu_count()}")
+        dataset = dataset.cast_column(cfg.x_col, Image())
+        dataset = dataset.map(tx, input_columns=cfg.x_col, num_proc=os.cpu_count())
+        print("[ds.map(Resize) COMPLETE]")
+    else:
+        from functools import partial
+
+        num_threads = os.cpu_count() or 0
+        num_threads = num_threads // 2
+        tx = partial(
+            transform_image_batch,
+            transform=tx,
+            return_as_dict_key=cfg.x_col,
+            num_threads=num_threads,
+        )
+        dataset = dataset.map(
+            tx,
+            input_columns=cfg.x_col,
+            num_proc=os.cpu_count(),
+            batched=True,
+            batch_size=batch_size,
+        )
+    print_current_time()
 
     return dataset
 
@@ -242,10 +313,9 @@ def main(cfg: Optional[Config] = None) -> None:
     cfg.show()
 
     # Creating the resized image HFDataset with metadata columns
-    dataset = create_single_label_hf_dataset(cfg)
+    dataset = create_single_label_hf_dataset(cfg, batch_size=1000)
 
-    print("[ds.map(Resize) COMPLETE]")
-    print_current_time()
+    print("[INITIATING dataset.save_to_disk()]")
 
     dataset.save_to_disk(cfg.hf_dataset_path, num_proc=os.cpu_count())
 
