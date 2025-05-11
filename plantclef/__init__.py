@@ -7,8 +7,10 @@ from . import (
     model_setup,
     plotting,
     serde,
-    spark_utils,
+    utils,
 )
+
+from .utils import imutils, spark_utils
 
 # import sys
 
@@ -22,6 +24,8 @@ __all__ = [
     "model_setup",
     "plotting",
     "serde",
+    "utils",
+    "imutils",
     "spark_utils",
 ]
 
