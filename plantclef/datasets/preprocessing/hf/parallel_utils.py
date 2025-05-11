@@ -92,7 +92,7 @@ def process_shard(
     num_proc = num_proc or os.cpu_count()
 
     processor = ImageProcessor(cfg.image_size, cfg.interpolation_mode)
-    process_func = processor.configure_processor(key=cfg.data_cfg.x_col)
+    process_func = processor.configure_processor(key="image")  # cfg.data_cfg.x_col)
 
     # Process the shard
     processed_shard = shard.map(
@@ -105,7 +105,7 @@ def process_shard(
     )
 
     # Transform the data
-    processed_shard = processed_shard.rename_column(cfg.data_cfg.x_col, "image")
+    # processed_shard = processed_shard.rename_column(cfg.data_cfg.x_col, "image")
     processed_shard = processed_shard.cast_column("image", Image())
 
     # Save the processed shard
@@ -153,6 +153,8 @@ def process_data_subset(
         resume_from_shard = 0
 
     start_shard = resume_from_shard or 0
+
+    features = ds.features
     # Prepare and process shards
     shards = ds.batch(cfg.shard_size).skip(start_shard)
 
@@ -163,7 +165,7 @@ def process_data_subset(
         unit="shard",
         unit_scale=cfg.shard_size,
     ):
-        shard = HFDataset.from_dict(shard)
+        shard = HFDataset.from_dict(shard, features=features)
         process_shard(shard, shard_idx, total_size, cfg)
         del shard
         gc.collect()
