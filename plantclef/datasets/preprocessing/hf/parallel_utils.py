@@ -18,6 +18,7 @@ from plantclef.datasets.preprocessing.hf.train_val_test_subsets_to_hf import (
 )
 from plantclef.embed.utils import print_current_time, print_dir_size
 from plantclef.utils.imutils import ImageProcessor
+from plantclef.utils.file_utils import clear_directory
 
 # from tqdm import tqdm
 from datasets import Image
@@ -97,7 +98,9 @@ def process_shard(
     processed_shard.save_to_disk(shard_path)
 
 
-def process_data_subset(ds: HFDataset, cfg: ResizeDatasetConfig) -> None:
+def process_data_subset(
+    ds: HFDataset, cfg: ResizeDatasetConfig, resume: bool = True
+) -> None:
     """
     Main function to process an entire dataset subset.
 
@@ -116,6 +119,20 @@ def process_data_subset(ds: HFDataset, cfg: ResizeDatasetConfig) -> None:
     # Get starting point
     resume_from_shard = cfg.data_cfg.get_last_existing_shard_idx()
     start_shard = resume_from_shard or 0
+
+    if resume_from_shard >= cfg.num_shards - 1:
+        print(
+            f"[INFO] - All shards already processed. Skipping processing for {cfg.data_cfg.subset} subset."
+        )
+        return
+
+    if not resume:
+        print(
+            f"[INFO] -- resume is set to False, clearing existing data at {cfg.data_cfg.hf_dataset_path}..."
+        )
+        print("Existing contents size:")
+        print_dir_size(cfg.data_cfg.hf_dataset_path)
+        clear_directory(cfg.data_cfg.hf_dataset_path)
 
     # Prepare and process shards
     shards = ds.batch(cfg.shard_size).skip(start_shard)
@@ -137,7 +154,7 @@ def process_data_subset(ds: HFDataset, cfg: ResizeDatasetConfig) -> None:
     print_dir_size(cfg.data_cfg.hf_dataset_path)
 
 
-def process_data_subsets(cfg: ResizeDatasetConfig) -> None:
+def process_data_subsets(cfg: ResizeDatasetConfig, resume: bool = True) -> None:
     """
     Process the dataset subsets.
 
@@ -154,7 +171,7 @@ def process_data_subsets(cfg: ResizeDatasetConfig) -> None:
         print(f"Subset path: {cfg.data_cfg.hf_dataset_path}")
 
         try:
-            process_data_subset(ds, cfg)
+            process_data_subset(ds, cfg, resume=resume)
         except Exception as e:
             print(f"Error processing {subset_name} subset: {e}")
             exit(1)
@@ -171,7 +188,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--num_batches_per_shard",
         type=int,
-        default=4,
+        default=os.cpu_count(),
         help="Number of batches per shard",
     )
     parser.add_argument(
@@ -185,6 +202,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="BILINEAR",
         help="Interpolation mode for resizing",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        default=False,
+        help="Resume processing from the last incomplete run. If not set, will clear any existing processed data",
     )
     args = parser.parse_args()
 
@@ -209,7 +232,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     os.makedirs(cfg.data_cfg.hf_dataset_path, exist_ok=True)
 
     # Process the dataset subsets
-    process_data_subsets(cfg)
+    process_data_subsets(cfg, resume=args.resume)
     print_current_time()
 
 

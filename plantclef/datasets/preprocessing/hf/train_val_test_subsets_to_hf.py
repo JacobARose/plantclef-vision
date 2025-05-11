@@ -6,10 +6,16 @@ Created by: Jacob A Rose
 
 Load train, val, and test subsets of the single-label full train set from disk, convert to Hugging Face Dataset, then save_to_disk for later efficient reading during model embedding/inference/training.
 
+* num_batches_per_shard = os.cpu_count() by default
 
 Example:
 
 python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py"
+
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 500
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 256
 
 """
 
@@ -95,8 +101,8 @@ class Config(BaseConfig):
 
         if self.subset is None:
             self._hf_dataset_path = f"{self.hf_dataset_dir}/shortest_edge_{self.image_size['shortest_edge']}"
-
-        self._hf_dataset_path = f"{self.hf_dataset_dir}/shortest_edge_{self.image_size['shortest_edge']}/{self.subset}"
+        else:
+            self._hf_dataset_path = f"{self.hf_dataset_dir}/shortest_edge_{self.image_size['shortest_edge']}/{self.subset}"
 
     def metadata_cache_exists(self) -> bool:
         """
@@ -205,18 +211,32 @@ class Config(BaseConfig):
         """
         Helper function for getting the last existing shard index from the dataset directory to continue from a checkpoint
         """
-        resume_from_shard = 0
+        last_existing_shard_idx = 0
         if not os.path.exists(self.hf_dataset_path):
             return 0
+
+        found_shards = self.get_shard_paths()
+        found_shard_idxs = [self.get_shard_idx(p) for p in found_shards]
+        if len(found_shard_idxs) > 0:
+            last_existing_shard_idx = max(found_shard_idxs) + 1
+
+        return last_existing_shard_idx
+
+    def get_shard_paths(self) -> List[str]:
+        """
+        Helper function for getting the shard paths from the dataset directory
+        """
+        if not os.path.exists(self.hf_dataset_path):
+            return []
 
         found_shards = sorted(
             [p for p in os.listdir(self.hf_dataset_path) if p.endswith(".arrow")]
         )
-        found_shard_idxs = [self.get_shard_idx(p) for p in found_shards]
-        if len(found_shard_idxs) > 0:
-            resume_from_shard = max(found_shard_idxs) + 1
+        found_shard_paths = [
+            os.path.join(self.hf_dataset_path, p) for p in found_shards
+        ]
 
-        return resume_from_shard
+        return found_shard_paths
 
 
 def get_transforms(
