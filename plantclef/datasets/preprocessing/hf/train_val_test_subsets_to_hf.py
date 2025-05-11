@@ -22,7 +22,7 @@ from plantclef.datasets.utils import (
     load_plantclef_class2idx,
     optimize_pandas_dtypes,
 )
-from plantclef.embed.utils import print_current_time, print_dir_size
+from plantclef.embed.utils import print_current_time
 from typing import Dict, Optional, Callable, List, Union, Any
 from concurrent.futures import ThreadPoolExecutor
 import torch
@@ -59,7 +59,8 @@ class Config(BaseConfig):
         "/teamspace/studios/this_studio/plantclef-vision/data/hf"
     )
     hf_dataset_dir: str = ""
-    hf_dataset_path: str = ""
+    _hf_dataset_path: str = ""
+    subset: Optional[str] = None
 
     def __post_init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -68,9 +69,9 @@ class Config(BaseConfig):
         self.hf_dataset_dir = (
             f"{self.hf_datasets_root_dir}/plantclef2025/single_label_train_val_test"
         )
-        self.hf_dataset_path = (
-            f"{self.hf_dataset_dir}/shortest_edge_{self.image_size['shortest_edge']}"
-        )
+        # self.hf_dataset_path = (
+        #     f"{self.hf_dataset_dir}/shortest_edge_{self.image_size['shortest_edge']}"
+        # )
         self.metadata_cache_path = (
             f"{Path(self.metadata_path).parent}/{Path(self.metadata_path).stem}.parquet"
         )
@@ -78,6 +79,23 @@ class Config(BaseConfig):
         self.class_index_path = (
             f"{Path(self.metadata_path).parent}/{self.label_col}s.csv"
         )
+
+    @property
+    def hf_dataset_path(self):
+        return self._hf_dataset_path
+
+    def set_subset(self, subset: Optional[str] = None):
+        """
+        Set the subset for the dataset. Dynamically updates return value for self.hf_dataset_path.
+        Args:
+            subset (str): The subset to set. Can be 'train', 'val', or 'test'.
+        """
+        self.subset = subset
+
+        if self.subset is None:
+            self._hf_dataset_path = f"{self.hf_dataset_dir}/shortest_edge_{self.image_size['shortest_edge']}"
+
+        self._hf_dataset_path = f"{self.hf_dataset_dir}/shortest_edge_{self.image_size['shortest_edge']}/{self.subset}"
 
     def metadata_cache_exists(self) -> bool:
         """
@@ -169,8 +187,33 @@ class Config(BaseConfig):
 
         return os.path.join(
             self.hf_dataset_path,
-            f"data_shard_{shard_idx * shard_size}_{min((shard_idx + 1) * shard_size, total_size)}.arrow",
+            f"data_shard_{shard_idx}_{shard_idx * shard_size}_{min((shard_idx + 1) * shard_size, total_size)}.arrow",
         )
+
+    def get_shard_idx(self, shard_path: str) -> int:
+        """
+        Helper function for getting the shard index from a formatted arrow file path str
+        """
+
+        # Extract the shard index from the filename
+        shard_idx = int(shard_path.split("_")[2])
+
+        return shard_idx
+
+    def get_last_existing_shard_idx(self) -> int:
+        """
+        Helper function for getting the last existing shard index from the dataset directory to continue from a checkpoint
+        """
+        resume_from_shard = 0
+
+        found_shards = sorted(
+            [p for p in os.listdir(self.hf_dataset_path) if p.endswith(".arrow")]
+        )
+        found_shard_idxs = [self.get_shard_idx(p) for p in found_shards]
+        if len(found_shard_idxs) > 0:
+            resume_from_shard = max(found_shard_idxs) + 1
+
+        return resume_from_shard
 
 
 def get_transforms(
@@ -328,21 +371,23 @@ def create_single_label_hf_dataset(
     return dataset
 
 
-def main(cfg: Optional[Config] = None) -> None:
-    cfg = cfg or Config()
-    cfg.show()
+# def main(cfg: Optional[Config] = None) -> None:
+#     cfg = cfg or Config()
+#     cfg.show()
 
-    # Creating the resized image HFDataset with metadata columns
-    dataset = create_single_label_hf_dataset(cfg, batch_size=500)
+#     # Creating the resized image HFDataset with metadata columns
+#     dataset = create_single_label_hf_dataset(cfg, batch_size=500)
 
-    print("[INITIATING dataset.save_to_disk()]")
+#     print("[INITIATING dataset.save_to_disk()]")
 
-    dataset.save_to_disk(cfg.hf_dataset_path, num_proc=os.cpu_count())
+#     dataset.save_to_disk(cfg.hf_dataset_path, num_proc=os.cpu_count())
 
-    print("[Dataset.save_to_disk() COMPLETE]")
-    print_current_time()
-    print_dir_size(cfg.hf_dataset_path)
+#     print("[Dataset.save_to_disk() COMPLETE]")
+#     print_current_time()
+#     print_dir_size(cfg.hf_dataset_path)
 
 
 if __name__ == "__main__":
+    from plantclef.datasets.preprocessing.hf.parallel_utils import main
+
     main()
