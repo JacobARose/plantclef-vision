@@ -17,6 +17,27 @@ python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/prepr
 
 python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 256
 
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 128 --num_batches_per_shard 64 --image_size 350
+
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 256 --num_batches_per_shard 32 --image_size 350
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 64 --num_batches_per_shard 512 --image_size 350
+
+
+###################
+
+# python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 32 --num_batches_per_shard 1024 --image_size 350
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 64 --num_batches_per_shard 1024 --image_size 350
+
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 128 --num_batches_per_shard 1024 --image_size 350
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 128 --num_batches_per_shard 512 --image_size 350
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 128 --num_batches_per_shard 256 --image_size 322
+
 """
 
 import os
@@ -203,7 +224,7 @@ class Config(BaseConfig):
         """
 
         # Extract the shard index from the filename
-        shard_idx = int(shard_path.split("_")[2])
+        shard_idx = int(Path(shard_path).stem.split("_")[2])
 
         return shard_idx
 

@@ -51,8 +51,12 @@ class ImageProcessor:
     def process_func(self, path):
         """ """
 
-        img = self.read_image(path)
-        return self.resize_image(img)
+        try:
+            img = self.read_image(path)
+            return self.resize_image(img)
+        except Exception as e:
+            print(f"Error processing image {path}: {e}")
+            return None
 
     def process_batch(self, batch):
         # print(type(batch))

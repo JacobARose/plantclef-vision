@@ -6,6 +6,7 @@ Created by: Jacob A Rose
 
 """
 
+import gc
 import os
 from tqdm.auto import tqdm
 from typing import Optional
@@ -25,6 +26,20 @@ from datasets import Image
 from functools import partial
 from typing import Dict
 import argparse
+
+
+def debug_on_exception(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            import sys
+            import ipdb
+
+            ipdb.post_mortem(sys.exc_info()[2])
+            raise
+
+    return wrapper
 
 
 class ResizeDatasetConfig:
@@ -95,7 +110,10 @@ def process_shard(
 
     # Save the processed shard
     shard_path = cfg.data_cfg.get_shard_path(shard_idx, cfg.shard_size, total_size)
-    processed_shard.save_to_disk(shard_path)
+    processed_shard.save_to_disk(shard_path)  # , num_proc=min(num_proc, 8))
+
+    del processed_shard
+    gc.collect()
 
 
 def process_data_subset(
@@ -118,7 +136,6 @@ def process_data_subset(
 
     # Get starting point
     resume_from_shard = cfg.data_cfg.get_last_existing_shard_idx()
-    start_shard = resume_from_shard or 0
 
     if resume_from_shard >= cfg.num_shards - 1:
         print(
@@ -133,7 +150,9 @@ def process_data_subset(
         print("Existing contents size:")
         print_dir_size(cfg.data_cfg.hf_dataset_path)
         clear_directory(cfg.data_cfg.hf_dataset_path)
+        resume_from_shard = 0
 
+    start_shard = resume_from_shard or 0
     # Prepare and process shards
     shards = ds.batch(cfg.shard_size).skip(start_shard)
 
@@ -146,6 +165,8 @@ def process_data_subset(
     ):
         shard = HFDataset.from_dict(shard)
         process_shard(shard, shard_idx, total_size, cfg)
+        del shard
+        gc.collect()
 
     print(
         f"[FINISHED] - Processing subset {cfg.data_cfg.subset} with total size = {total_size}"
@@ -161,6 +182,7 @@ def process_data_subsets(cfg: ResizeDatasetConfig, resume: bool = True) -> None:
     Args:
         cfg: Configuration object containing all processing parameters
     """
+    # import pdb; pdb.set_trace()
     dataset_subsets = preprocess_hf_dataset(cfg.data_cfg)
 
     for subset_name, ds in dataset_subsets.items():
@@ -174,7 +196,12 @@ def process_data_subsets(cfg: ResizeDatasetConfig, resume: bool = True) -> None:
             process_data_subset(ds, cfg, resume=resume)
         except Exception as e:
             print(f"Error processing {subset_name} subset: {e}")
-            exit(1)
+            # exit(1)
+            import ipdb
+
+            ipdb.post_mortem()
+            raise e
+            break
 
         print_current_time()
         print_dir_size(cfg.data_cfg.hf_dataset_path)
@@ -214,6 +241,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+@debug_on_exception
 def main(args: Optional[argparse.Namespace] = None) -> None:
     """
     Main function to run the processing.
