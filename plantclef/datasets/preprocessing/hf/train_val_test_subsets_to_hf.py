@@ -79,6 +79,7 @@ class Config(BaseConfig):
         self.class_index_path = (
             f"{Path(self.metadata_path).parent}/{self.label_col}s.csv"
         )
+        self.set_subset(subset=self.subset)
 
     @property
     def hf_dataset_path(self):
@@ -205,6 +206,8 @@ class Config(BaseConfig):
         Helper function for getting the last existing shard index from the dataset directory to continue from a checkpoint
         """
         resume_from_shard = 0
+        if not os.path.exists(self.hf_dataset_path):
+            return 0
 
         found_shards = sorted(
             [p for p in os.listdir(self.hf_dataset_path) if p.endswith(".arrow")]

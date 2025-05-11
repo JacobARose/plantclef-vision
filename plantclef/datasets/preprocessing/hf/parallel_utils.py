@@ -1,4 +1,10 @@
-""" """
+"""
+file: parallel_utils.py
+Created on: Saturday May 10th, 2025
+Created by: Jacob A Rose
+
+
+"""
 
 import os
 from tqdm.auto import tqdm
@@ -141,10 +147,11 @@ def process_data_subsets(cfg: ResizeDatasetConfig) -> None:
     dataset_subsets = preprocess_hf_dataset(cfg.data_cfg)
 
     for subset_name, ds in dataset_subsets.items():
+        cfg.data_cfg.set_subset(subset_name)
+
         print_current_time()
         print(f"Processing {subset_name} subset with total length = {len(ds)}...")
-
-        cfg.data_cfg.set_subset(subset_name)
+        print(f"Subset path: {cfg.data_cfg.hf_dataset_path}")
 
         try:
             process_data_subset(ds, cfg)
@@ -159,7 +166,7 @@ def process_data_subsets(cfg: ResizeDatasetConfig) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Resize dataset configuration")
     parser.add_argument(
-        "--batch_size", type=int, default=16, help="Batch size for processing"
+        "--batch_size", type=int, default=64, help="Batch size for processing"
     )
     parser.add_argument(
         "--num_batches_per_shard",
@@ -198,6 +205,8 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         image_size={"shortest_edge": args.image_size},
         interpolation_mode=args.interpolation_mode,
     )
+
+    os.makedirs(cfg.data_cfg.hf_dataset_path, exist_ok=True)
 
     # Process the dataset subsets
     process_data_subsets(cfg)
