@@ -41,7 +41,7 @@ python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/prepr
 
 # -- 4 core
 
-python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 128 --num_batches_per_shard 128 --image_size 322
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 64 --num_batches_per_shard 128 --image_size 322
 
 """
 

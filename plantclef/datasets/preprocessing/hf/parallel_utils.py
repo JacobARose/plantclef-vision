@@ -12,7 +12,7 @@ import os
 from tqdm.auto import tqdm
 from typing import Optional
 
-
+from plantclef.config import BaseConfig
 from plantclef.datasets.preprocessing.hf.train_val_test_subsets_to_hf import (
     Config,
     preprocess_hf_dataset,
@@ -43,17 +43,18 @@ def debug_on_exception(func):
     return wrapper
 
 
-class ResizeDatasetConfig:
+class ResizeDatasetConfig(BaseConfig):
     def __init__(
         self,
         batch_size: int = 16,
         num_batches_per_shard: int = 4,
         image_size: Dict[str, int] = {"shortest_edge": 588},
         interpolation_mode: str = "BILINEAR",
-        log_dir: Optional[str] = "~/reszize_dataset_logs",
+        log_dir: Optional[str] = "~/resize_dataset_logs",
         **kwargs,
     ):
         """Initialize the configurator with processing parameters."""
+        super().__init__(**kwargs)
         self.batch_size = batch_size
         self.num_batches_per_shard = num_batches_per_shard
         self.image_size = image_size
@@ -98,6 +99,8 @@ def process_shard(
     processor = ImageProcessor(cfg.image_size, cfg.interpolation_mode)
     process_func = processor.configure_processor(key="image")  # cfg.data_cfg.x_col)
 
+    shard_path = cfg.data_cfg.get_shard_path(shard_idx, cfg.shard_size, total_size)
+
     # Process the shard
     try:
         processed_shard = shard.map(
@@ -111,7 +114,6 @@ def process_shard(
 
         processed_shard = processed_shard.cast_column("image", Image())
 
-        shard_path = cfg.data_cfg.get_shard_path(shard_idx, cfg.shard_size, total_size)
         processed_shard.save_to_disk(shard_path)  # , num_proc=min(num_proc, 8))
 
         del processed_shard
@@ -143,19 +145,24 @@ def log_dataset_exception(
     new_shard_path = os.path.join(log_dir, shard_name)
     log_path = os.path.join(log_dir, log_name)
 
+    shard_idx = cfg.data_cfg.get_shard_idx(shard_path)
+
     ds.save_to_disk(new_shard_path)
     with open(log_path, "w") as f:
         json.dump(
             {
                 "log_shard_path": new_shard_path,
                 "shard_path": shard_path,
-                "shard_idx": cfg.data_cfg.get_shard_idx(shard_path),
-                "cfg": cfg,
+                "shard_idx": shard_idx,
+                # "cfg": cfg.__dict__,
                 "Exception": str(e),
             },
             f,
         )
-    print(f"Documented Exception in {log_path}")
+    print_current_time()
+    print(
+        f"Documented Exception during processing of shard_idx={shard_idx} in {log_path}"
+    )
 
 
 def process_data_subset(
