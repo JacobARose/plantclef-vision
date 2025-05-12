@@ -28,7 +28,7 @@ from functools import partial
 from typing import Dict
 import argparse
 from math import ceil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def debug_on_exception(func):
@@ -45,6 +45,10 @@ def debug_on_exception(func):
     return wrapper
 
 
+def default_image_size():
+    return {"shortest_edge": 588}
+
+
 @dataclass
 class ResizeDatasetConfig(BaseConfig):
     num_samples: int = 0
@@ -53,23 +57,21 @@ class ResizeDatasetConfig(BaseConfig):
     num_samples_per_shard: int = 4096
     batch_size: int = 64
     interpolation_mode: str = "BILINEAR"
+    image_size: Dict[str, int] = field(default_factory=default_image_size)
+    log_dir: Optional[str] = "~/resize_dataset_logs"
 
-    def __init__(
+    def __post_init__(
         self,
-        image_size: Dict[str, int] = {"shortest_edge": 588},
-        log_dir: Optional[str] = "~/resize_dataset_logs",
         **kwargs,
     ):
         """Initialize the configurator with processing parameters."""
-        # super().__init__(**kwargs)
-        self.image_size = image_size
+        super().__init__()  # **kwargs)
 
         # Derived configurations
         self.data_cfg = Config(
-            image_size=image_size, interpolation_mode=self.interpolation_mode
+            image_size=self.image_size, interpolation_mode=self.interpolation_mode
         )
-
-        self.log_dir = os.path.expanduser((log_dir or ""))
+        self.log_dir = os.path.expanduser((self.log_dir or ""))
 
     def set_subset(self, subset_name: str) -> None:
         """Set the subset name for the dataset configuration."""
