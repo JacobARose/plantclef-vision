@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
+import os
 import pandas as pd
 from typing import Optional, Dict
 import torch
@@ -10,10 +11,11 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset as PyTorchDataset
 from torchvision.transforms import ToTensor
 from torchvision import transforms
-from datasets import Dataset as HFDataset
+from datasets import Dataset as HFDataset, concatenate_datasets
 import PIL.Image
 from plantclef.serde import deserialize_image
 from plantclef.pytorch.model import DINOv2LightningModel
+from tqdm import tqdm
 
 
 def custom_collate_fn(batch, use_grid):
@@ -295,11 +297,24 @@ class HFPlantDataset(BasePlantDataset):
         """
         super().__init__(transform, col_name, use_grid, grid_size)
         self.path = path
-        self._load_data(path)
+        self.dataset = self._load_data(path)
 
-    def _load_data(self, path: str) -> None:
+    def _load_nested_data(self, path: str) -> HFDataset:
+        """
+        Load a directory of HuggingFace datasets and concatenate them.
+        """
+        contents = os.listdir(path)
+        if "state.json" in contents and "dataset_info.json" in contents:
+            return self._load_data(path)
+
+        dataset_paths = [
+            os.path.join(path, p) for p in contents if p.endswith(".arrow")
+        ]
+        return concatenate_datasets([self._load_data(p) for p in tqdm(dataset_paths)])
+
+    def _load_data(self, path: str) -> HFDataset:
         """Load data from disk using HuggingFace Dataset."""
-        self.dataset = HFDataset.load_from_disk(path)
+        return HFDataset.load_from_disk(path)
 
     def _get_image_pil(self, idx: int) -> PIL.Image.Image:
         """Get image as PIL.Image from HuggingFace Dataset."""

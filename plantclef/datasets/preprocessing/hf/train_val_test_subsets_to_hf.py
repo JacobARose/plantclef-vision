@@ -55,7 +55,10 @@ python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/prepr
 
 # ---- 32-core machine
 
-python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 32 --num_samples_per_shard 32768 --image_size 308
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 64 --num_samples_per_shard 32768 --image_size 308
+
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 96 --num_samples_per_shard 32768 --image_size 308 --resume
 
 
 
