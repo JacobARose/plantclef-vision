@@ -28,6 +28,7 @@ from functools import partial
 from typing import Dict
 import argparse
 from math import ceil
+from dataclasses import dataclass
 
 
 def debug_on_exception(func):
@@ -44,9 +45,11 @@ def debug_on_exception(func):
     return wrapper
 
 
+@dataclass
 class ResizeDatasetConfig(BaseConfig):
     num_samples: int = 0
     num_shards: int = 0
+    num_batches_per_shard: int = 0
     num_samples_per_shard: int = 4096
     batch_size: int = 64
     interpolation_mode: str = "BILINEAR"
@@ -58,7 +61,7 @@ class ResizeDatasetConfig(BaseConfig):
         **kwargs,
     ):
         """Initialize the configurator with processing parameters."""
-        super().__init__(**kwargs)
+        # super().__init__(**kwargs)
         self.image_size = image_size
 
         # Derived configurations
