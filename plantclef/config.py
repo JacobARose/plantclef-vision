@@ -9,7 +9,7 @@ import json
 from dataclasses import dataclass, asdict
 from rich.repr import auto
 from rich import print as pprint
-from typing import Optional
+from typing import Optional, Dict, Any
 
 # T = TypeVar("T")
 
@@ -17,6 +17,19 @@ from typing import Optional
 @dataclass
 @auto
 class BaseConfig:
+    def to_dict(self):
+        """Convert the dataclass to a dictionary."""
+        out = asdict(self)
+        for k in list(out.keys()):
+            if out[k] is None:
+                del out[k]
+        return out
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]):
+        """Create an instance of the dataclass from a dictionary."""
+        return cls(**data)
+
     def save(
         self, path: str, indent: Optional[int] = None, exist_ok: bool = True
     ) -> None:
