@@ -48,14 +48,21 @@ python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/prepr
 python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 64 --num_batches_per_shard 64 --image_size 256
 
 # ----
+# new argparser based on num_samples_per_shard instead of num_batches_per_shard:
+
 
 python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 32 --num_samples_per_shard 4096 --image_size 256 --resume
+
+# ---- 32-core machine
+
+python "/teamspace/studios/this_studio/plantclef-vision/plantclef/datasets/preprocessing/hf/train_val_test_subsets_to_hf.py" --batch_size 32 --num_samples_per_shard 32768 --image_size 256
 
 
 
 """
 
 import os
+
 import pandas as pd
 from pathlib import Path
 from plantclef.datasets.utils import (
