@@ -143,6 +143,10 @@ class BasePlantDataset(ABC, PyTorchDataset):
 
     @classmethod
     def center_crop(cls, image: torch.Tensor) -> torch.Tensor:
+        """
+        Center crop the image to the smallest dimension.
+        :param image: Input image torch.Tensor of shape (C, H, W)
+        """
         min_dim = min(image.shape[1:])
         return transforms.CenterCrop(min_dim)(image)
 
@@ -297,7 +301,7 @@ class HFPlantDataset(BasePlantDataset):
         """
         super().__init__(transform, col_name, use_grid, grid_size)
         self.path = path
-        self.dataset = self._load_data(path)
+        self.dataset = self._load_nested_data(path)
 
     def _load_nested_data(self, path: str) -> HFDataset:
         """

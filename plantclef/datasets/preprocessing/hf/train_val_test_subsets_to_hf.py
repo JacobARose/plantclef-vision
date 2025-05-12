@@ -289,8 +289,8 @@ def get_transforms(
     image_size: Optional[Dict[str, int]] = None,
     crop_size: Optional[Dict[str, int]] = None,
 ) -> Callable:
-    image_size = image_size or {"shortest_edge": 588}
-    crop_size = crop_size or {"height": 588, "width": 588}
+    image_size = image_size or {"shortest_edge": 518}
+    crop_size = crop_size or {"height": 518, "width": 518}
     tx = []
     tx.append(
         transforms.Resize(
