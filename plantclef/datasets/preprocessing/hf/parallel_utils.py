@@ -27,6 +27,7 @@ from datasets import Image
 from functools import partial
 from typing import Dict
 import argparse
+from math import ceil
 
 
 def debug_on_exception(func):
@@ -44,30 +45,37 @@ def debug_on_exception(func):
 
 
 class ResizeDatasetConfig(BaseConfig):
+    num_samples: int = 0
+    num_shards: int = 0
+    num_samples_per_shard: int = 4096
+    batch_size: int = 64
+    interpolation_mode: str = "BILINEAR"
+
     def __init__(
         self,
-        batch_size: int = 16,
-        num_batches_per_shard: int = 4,
         image_size: Dict[str, int] = {"shortest_edge": 588},
-        interpolation_mode: str = "BILINEAR",
         log_dir: Optional[str] = "~/resize_dataset_logs",
         **kwargs,
     ):
         """Initialize the configurator with processing parameters."""
         super().__init__(**kwargs)
-        self.batch_size = batch_size
-        self.num_batches_per_shard = num_batches_per_shard
         self.image_size = image_size
-        self.interpolation_mode = interpolation_mode
 
         # Derived configurations
-        self.shard_size = batch_size * num_batches_per_shard
-        self.num_shards = 0
         self.data_cfg = Config(
-            image_size=image_size, interpolation_mode=interpolation_mode
+            image_size=image_size, interpolation_mode=self.interpolation_mode
         )
 
-        self.log_dir = os.path.expanduser(log_dir)
+        self.log_dir = os.path.expanduser((log_dir or ""))
+
+    def set_subset(self, subset_name: str) -> None:
+        """Set the subset name for the dataset configuration."""
+        self.data_cfg.set_subset(subset_name)
+
+    def set_dataset(self, ds: HFDataset) -> None:
+        self.num_samples = len(ds)
+        self.num_shards = ceil(self.num_samples / self.num_samples_per_shard)
+        self.num_batches_per_shard = ceil(self.num_samples_per_shard / self.batch_size)
 
     def setup_processor(self) -> partial:
         """Configure and return the image processor function."""
@@ -80,7 +88,7 @@ class ResizeDatasetConfig(BaseConfig):
 def process_shard(
     shard: HFDataset,
     shard_idx: int,
-    total_size: int,
+    num_samples: int,
     cfg: ResizeDatasetConfig,
     num_proc: Optional[int] = None,
 ) -> None:
@@ -90,7 +98,7 @@ def process_shard(
     Args:
         shard: The shard to process
         shard_idx: Current shard index
-        total_size: Total size of the dataset
+        num_samples: Total size of the dataset
         cfg: Configuration object
         num_proc: Number of processes to use (defaults to CPU count)
     """
@@ -99,7 +107,9 @@ def process_shard(
     processor = ImageProcessor(cfg.image_size, cfg.interpolation_mode)
     process_func = processor.configure_processor(key="image")  # cfg.data_cfg.x_col)
 
-    shard_path = cfg.data_cfg.get_shard_path(shard_idx, cfg.shard_size, total_size)
+    shard_path = cfg.data_cfg.get_shard_path(
+        shard_idx, cfg.num_samples_per_shard, num_samples
+    )
 
     # Process the shard
     try:
@@ -180,8 +190,8 @@ def process_data_subset(
     # ds = dataset_subsets["train"]
 
     # Calculate shards information
-    total_size = len(ds)
-    cfg.num_shards = total_size // cfg.shard_size + 1
+    # total_size = len(ds)
+    # cfg.num_shards = total_size // cfg.num_samples_per_shard + 1
 
     # Get starting point
     resume_from_shard = cfg.data_cfg.get_last_existing_shard_idx()
@@ -205,22 +215,22 @@ def process_data_subset(
 
     features = ds.features
     # Prepare and process shards
-    shards = ds.batch(cfg.shard_size).skip(start_shard)
+    shards = ds.batch(cfg.num_samples_per_shard).skip(start_shard)
 
     for shard_idx, shard in tqdm(
         enumerate(shards, start=start_shard),
         total=cfg.num_shards - start_shard,
         desc=f"Processing dataset shards from {start_shard} to {cfg.num_shards}",
         unit="shard",
-        unit_scale=cfg.shard_size,
+        unit_scale=cfg.num_samples_per_shard,
     ):
         shard = HFDataset.from_dict(shard, features=features)
-        process_shard(shard, shard_idx, total_size, cfg)
+        process_shard(shard, shard_idx, cfg.num_samples, cfg)
         del shard
         gc.collect()
 
     print(
-        f"[FINISHED] - Processing subset {cfg.data_cfg.subset} with total size = {total_size}"
+        f"[FINISHED] - Processing subset {cfg.data_cfg.subset} with num_samples = {cfg.num_samples}"
     )
     print_current_time()
     print_dir_size(cfg.data_cfg.hf_dataset_path)
@@ -237,7 +247,8 @@ def process_data_subsets(cfg: ResizeDatasetConfig, resume: bool = True) -> None:
     dataset_subsets = preprocess_hf_dataset(cfg.data_cfg)
 
     for subset_name, ds in dataset_subsets.items():
-        cfg.data_cfg.set_subset(subset_name)
+        cfg.set_subset(subset_name)
+        cfg.set_dataset(ds)
 
         print_current_time()
         print(f"Processing {subset_name} subset with total length = {len(ds)}...")
@@ -264,9 +275,9 @@ def parse_args() -> argparse.Namespace:
         "--batch_size", type=int, default=64, help="Batch size for processing"
     )
     parser.add_argument(
-        "--num_batches_per_shard",
+        "--num_samples_per_shard",
         type=int,
-        default=os.cpu_count(),
+        default=4096,
         help="Number of batches per shard",
     )
     parser.add_argument(
@@ -303,7 +314,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     # Initialize configuration
     cfg = ResizeDatasetConfig(
         batch_size=args.batch_size,
-        num_batches_per_shard=args.num_batches_per_shard,
+        num_samples_per_shard=args.num_samples_per_shard,
         image_size={"shortest_edge": args.image_size},
         interpolation_mode=args.interpolation_mode,
     )
