@@ -6,6 +6,7 @@ Created by: Jacob A Rose
 
 """
 
+import json
 import gc
 import os
 from tqdm.auto import tqdm
@@ -49,6 +50,7 @@ class ResizeDatasetConfig:
         num_batches_per_shard: int = 4,
         image_size: Dict[str, int] = {"shortest_edge": 588},
         interpolation_mode: str = "BILINEAR",
+        log_dir: Optional[str] = "~/reszize_dataset_logs",
         **kwargs,
     ):
         """Initialize the configurator with processing parameters."""
@@ -63,6 +65,8 @@ class ResizeDatasetConfig:
         self.data_cfg = Config(
             image_size=image_size, interpolation_mode=interpolation_mode
         )
+
+        self.log_dir = os.path.expanduser(log_dir)
 
     def setup_processor(self) -> partial:
         """Configure and return the image processor function."""
@@ -95,25 +99,63 @@ def process_shard(
     process_func = processor.configure_processor(key="image")  # cfg.data_cfg.x_col)
 
     # Process the shard
-    processed_shard = shard.map(
-        process_func,
-        input_columns=cfg.data_cfg.x_col,
-        batched=True,
-        batch_size=cfg.batch_size,
-        num_proc=num_proc,
-        desc=f"Processing shard {shard_idx} of {cfg.num_shards}",
-    )
+    try:
+        processed_shard = shard.map(
+            process_func,
+            input_columns=cfg.data_cfg.x_col,
+            batched=True,
+            batch_size=cfg.batch_size,
+            num_proc=num_proc,
+            desc=f"Processing shard {shard_idx} of {cfg.num_shards}",
+        )
 
-    # Transform the data
-    # processed_shard = processed_shard.rename_column(cfg.data_cfg.x_col, "image")
-    processed_shard = processed_shard.cast_column("image", Image())
+        processed_shard = processed_shard.cast_column("image", Image())
 
-    # Save the processed shard
-    shard_path = cfg.data_cfg.get_shard_path(shard_idx, cfg.shard_size, total_size)
-    processed_shard.save_to_disk(shard_path)  # , num_proc=min(num_proc, 8))
+        shard_path = cfg.data_cfg.get_shard_path(shard_idx, cfg.shard_size, total_size)
+        processed_shard.save_to_disk(shard_path)  # , num_proc=min(num_proc, 8))
 
-    del processed_shard
-    gc.collect()
+        del processed_shard
+        gc.collect()
+    except Exception as e:
+        print(f"Error processing shard {shard_idx}: {e}")
+        log_dataset_exception(shard, cfg, shard_path, cfg.log_dir, e)
+
+
+def log_dataset_exception(
+    ds: HFDataset,
+    cfg: ResizeDatasetConfig,
+    shard_path: str,
+    log_dir: str,
+    e: Optional[Exception] = None,
+) -> None:
+    """
+    Helper function for logging the contents of a Hugging Face dataset shard to disk, meant to be used when an exception occurs to allow continuing with the processing.
+    Args:
+        ds: The dataset shard to log
+        shard_path: Path to where the logged dataset was meant to be saved.
+        log_dir: Directory to save the logged dataset
+    """
+
+    os.makedirs(log_dir, exist_ok=True)
+
+    shard_name = os.path.basename(shard_path)
+    log_name = shard_name.replace(".arrow", "_log.json")
+    new_shard_path = os.path.join(log_dir, shard_name)
+    log_path = os.path.join(log_dir, log_name)
+
+    ds.save_to_disk(new_shard_path)
+    with open(log_path, "w") as f:
+        json.dump(
+            {
+                "log_shard_path": new_shard_path,
+                "shard_path": shard_path,
+                "shard_idx": cfg.data_cfg.get_shard_idx(shard_path),
+                "cfg": cfg,
+                "Exception": str(e),
+            },
+            f,
+        )
+    print(f"Documented Exception in {log_path}")
 
 
 def process_data_subset(
