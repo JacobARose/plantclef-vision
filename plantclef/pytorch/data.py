@@ -2,11 +2,10 @@ from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 import torch
 import pytorch_lightning as pl
 
-from functools import partial
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset as PyTorchDataset
 from torchvision.transforms import ToTensor
@@ -25,9 +24,21 @@ def custom_collate_fn(batch, use_grid):
     return torch.stack(batch)  # shape: (B, C, H, W)
 
 
-def custom_collate_fn_partial(use_grid):
+def custom_collate_fn_partial(use_grid: bool, key: Optional[str] = None):
     """Returns a pickle-friendly collate function with the `use_grid` flag."""
-    return partial(custom_collate_fn, use_grid=use_grid)
+
+    def collate_fn(batch) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
+        # from IPython.core.debugger import set_trace
+        # set_trace()  # Uncomment this line to enable debugging
+        # import pdb; pdb.set_trace()
+        if key is None:
+            return custom_collate_fn(batch, use_grid)
+        else:
+            # If key is provided, apply the collate function to the specified key
+            batch[key] = custom_collate_fn([b[key] for b in batch], use_grid)
+            return batch
+
+    return collate_fn
 
 
 class BasePlantDataset(ABC, PyTorchDataset):
@@ -124,8 +135,8 @@ class BasePlantDataset(ABC, PyTorchDataset):
         image_size: Optional[Dict[str, int]] = None,
         crop_size: Optional[Dict[str, int]] = None,
     ):
-        image_size = image_size or {"shortest_edge": 588}
-        crop_size = crop_size or {"height": 588, "width": 588}
+        image_size = image_size or {"shortest_edge": 518}
+        crop_size = crop_size or {"height": 518, "width": 518}
         return transforms.Compose(
             [
                 transforms.Resize(

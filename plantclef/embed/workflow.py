@@ -252,7 +252,7 @@ def make_predictions_and_save(
     print_current_time()
 
     embeddings, logits = torch_pipeline(
-        ds,
+        dataset=ds,
         batch_size=cfg.batch_size,
         use_grid=cfg.use_grid,
         grid_size=cfg.grid_size,
