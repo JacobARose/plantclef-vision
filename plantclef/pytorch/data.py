@@ -18,6 +18,8 @@ from tqdm import tqdm
 
 from datasets.utils.logging import set_verbosity_error
 
+from plantclef.datasets.transforms import get_transforms
+
 set_verbosity_error()
 disable_progress_bars()
 
@@ -393,7 +395,6 @@ class HFPlantDatasetDict(HFPlantDataset):
         """
         super().__init__(
             path=None,
-            transform=transform,
             x_col=x_col,
             y_col=y_col,
             use_grid=use_grid,
@@ -409,6 +410,7 @@ class HFPlantDatasetDict(HFPlantDataset):
             self.datasets = {}
         # self.datasets = self._load_subsets(paths)
         self.set_subset(subset)
+        self.set_transform(transform)
 
     def set_subset(self, subset: str):
         """
@@ -421,8 +423,22 @@ class HFPlantDatasetDict(HFPlantDataset):
             self.update(paths={subset: self.paths[subset]})
 
         self.dataset = self.datasets[subset]
+
         self.subset = subset
         # self.transform = self.get_transforms()
+
+    def get_transforms(self, is_training: bool = False):
+        return get_transforms(is_training=is_training)
+
+    def set_transform(self, transform: Optional[transforms.Compose] = None) -> None:
+        """
+        Set the transform for the dataset.
+        Must be run after `self.set_subset` to ensure `self.dataset` is not None.
+        """
+        is_training = self.subset == "train"
+        transform = transform or self.get_transforms(is_training=is_training)
+        self.transform = transform
+        self.dataset.transform = transform
 
     def update(self, paths: Dict[str, str]):
         """

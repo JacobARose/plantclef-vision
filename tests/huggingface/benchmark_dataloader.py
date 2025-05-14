@@ -146,7 +146,7 @@ if __name__ == "__main__":
     subset = "val"
 
     batch_sizes = [16, 32, 64, 128]
-    num_workers_list = [0, 2, 4, 8]
+    num_workers_list = [0, 2, 4]
     num_iterations = 5
     warmup_iterations = 2
 

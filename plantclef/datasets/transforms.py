@@ -59,7 +59,7 @@ def get_transforms(is_training: bool = False) -> Callable:
 
     def transform_func(image: List[PIL.Image.Image]) -> np.ndarray:
         image = np.array(image)
-        print(image.dtype)
+        # print(image.dtype)
         # image = image.squeeze()
 
         image = tx(image=image)["image"]
