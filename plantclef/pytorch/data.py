@@ -438,7 +438,7 @@ class HFPlantDatasetDict(HFPlantDataset):
         is_training = self.subset == "train"
         transform = transform or self.get_transforms(is_training=is_training)
         self.transform = transform
-        self.dataset.transform = transform
+        # self.dataset.transform = transform
 
     def update(self, paths: Dict[str, str]):
         """

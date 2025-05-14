@@ -59,13 +59,21 @@ def get_transforms(is_training: bool = False) -> Callable:
 
     def transform_func(image: List[PIL.Image.Image]) -> np.ndarray:
         image = np.array(image)
-        # print(image.dtype)
+        print("in transform_func")
+        print(image.dtype)
+        print(image.shape)
         # image = image.squeeze()
 
         image = tx(image=image)["image"]
         return image
 
     def collate_fn(batch):
-        return torch.stack([transform_func(item) for item in batch])
+        print(type(batch))
+        print(len(batch))
+        if isinstance(batch, list):
+            return torch.stack([transform_func(image=item) for item in batch])
+        else:
+            print(batch.shape)
+            return transform_func(image=batch)
 
     return collate_fn
