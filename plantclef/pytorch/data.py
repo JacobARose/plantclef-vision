@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import os
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, Any
 import torch
 
 from torch.utils.data import Dataset as PyTorchDataset
@@ -56,6 +56,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
         y_col: str = "label_idx",
         use_grid: bool = False,
         grid_size: int = 4,
+        # subset: str = "train"
     ):
         """
         Args:
@@ -69,6 +70,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
         self.y_col = y_col
         self.use_grid = use_grid
         self.grid_size = grid_size
+        # self.subset = subset
 
     @abstractmethod
     def _load_data(self) -> None:
@@ -293,6 +295,7 @@ class HFPlantDataset(BasePlantDataset):
         y_col: str = "label_idx",
         use_grid: bool = False,
         grid_size: int = 4,
+        # subset: str = "train"
     ):
         """
         Args:
@@ -301,6 +304,7 @@ class HFPlantDataset(BasePlantDataset):
             x_col: Column name containing image data
             use_grid: Whether to split images into a grid
             grid_size: Size of the grid to split images into
+            subset: Subset of the dataset to load (e.g., 'train', 'val', 'test')
         """
         super().__init__(
             transform, x_col=x_col, y_col=y_col, use_grid=use_grid, grid_size=grid_size
@@ -375,6 +379,8 @@ class HFPlantDatasetDict(HFPlantDataset):
         use_grid: bool = False,
         grid_size: int = 1,
         subset: str = "train",
+        load_all_subsets: bool = True,
+        verbose: bool = False,
     ):
         """
         Args:
@@ -394,22 +400,42 @@ class HFPlantDatasetDict(HFPlantDataset):
             grid_size=grid_size,
         )
 
+        self.verbose = verbose
         self.subsets = [k for k in paths.keys() if k in ("train", "val", "test")]
         self.paths = paths
-        self.datasets = self._load_subsets(paths)
+        if load_all_subsets:
+            self.datasets = self._load_subsets(paths)
+        else:
+            self.datasets = {}
+        # self.datasets = self._load_subsets(paths)
         self.set_subset(subset)
 
     def set_subset(self, subset: str):
         """
-        Set the current subset to be used for training or validation.
+        Set the current subset in-place, e.g. "train", "val" or "test".
         """
         if subset not in self.subsets:
             raise ValueError(f"Subset {subset} not found in self.subsets.")
 
+        if subset not in self.datasets:
+            self.update(paths={subset: self.paths[subset]})
+
         self.dataset = self.datasets[subset]
+        self.subset = subset
         # self.transform = self.get_transforms()
 
-    def _load_subsets(self, paths: Dict[str, str]) -> HFDatasetDict:
+    def update(self, paths: Dict[str, str]):
+        """
+        Update the DatasetDict in place with paths to new data subsets
+        """
+        self.datasets.update(self._load_subsets(paths, as_dict=True))
+        self.subsets.extend(
+            [k for k in paths.keys() if k not in self.subsets]
+        )  # Add new subsets to the list
+
+    def _load_subsets(
+        self, paths: Dict[str, str], as_dict: bool = False
+    ) -> HFDatasetDict | Dict[str, HFPlantDataset]:
         """
         Load a dictionary of HuggingFace datasets and concatenate them.
         """
@@ -417,8 +443,23 @@ class HFPlantDatasetDict(HFPlantDataset):
 
         datasets = {}
         for subset, p in paths.items():
+            if self.verbose:
+                print(f"Loading {subset} dataset from {p}")
             datasets[subset] = self._load_nested_data(p)
+        if as_dict:
+            return datasets
         return HFDatasetDict(datasets)
+
+    def __repr__(self) -> str:
+        """String representation of the dataset."""
+        return f"HFPlantDatasetDict(\n\t{self.datasets.__repr__()}\n)"
+
+    def __rich_repr__(self) -> Any:
+        # yield str(type(self))
+        yield f"Subset: {self.subset}"
+        yield "Paths:"
+        for subset, path in self.paths.items():
+            yield f"{subset}: ", path
 
 
 # class PlantDataset(PyTorchDataset):

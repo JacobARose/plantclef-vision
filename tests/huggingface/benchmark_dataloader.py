@@ -139,21 +139,35 @@ class DummyDataset(torch.utils.data.Dataset):
 
 
 if __name__ == "__main__":
-    # Example usage
+    from plantclef.pytorch.data_catalog import make_dataset
+    from plantclef.embed.utils import print_current_time
+
+    name = "plantclef2024"
+    subset = "val"
+
     batch_sizes = [16, 32, 64, 128]
     num_workers_list = [0, 2, 4, 8]
     num_iterations = 5
     warmup_iterations = 2
 
     # Create dataset and run benchmarks
-    dataset = DummyDataset(1000)
+    # dataset = DummyDataset(1000)
+
+    print(f"Initiating {__file__} Benchmark on subset {subset} of dataset {name}")
+    print(f"Batch sizes: {batch_sizes}")
+    print(f"Num workers: {num_workers_list}")
+    print(f"Num iterations: {num_iterations}")
+    print(f"Warmup iterations: {warmup_iterations}")
+    print_current_time()
+
+    data = make_dataset(name=name, subset=subset, load_all_subsets=True)
 
     benchmarker = DataLoaderBenchmarker(
-        dataset,
-        batch_sizes=[16, 32, 64, 128],
-        num_workers_list=[0, 2, 4, 8],
-        num_iterations=5,
-        warmup_iterations=2,
+        data,
+        batch_sizes=batch_sizes,
+        num_workers_list=num_workers_list,
+        num_iterations=num_iterations,
+        warmup_iterations=warmup_iterations,
     )
 
     results = benchmarker.run_benchmark()
