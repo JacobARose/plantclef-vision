@@ -15,16 +15,15 @@ from typing import Optional
 import torch
 import os
 import pandas as pd
-import pytorch_lightning as pl
 from plantclef.pytorch.data import (
     HFDataset,
     HFPlantDataset,
-    PlantDataModule,
+    # PlantDataModule,
     custom_collate_fn_partial,
 )
 from plantclef.pytorch.model import DINOv2LightningModel
 from plantclef.embed.utils import print_current_time, print_dir_size
-from plantclef.config import get_device, BaseConfig
+from plantclef.config import BaseConfig
 from rich.repr import auto
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -82,58 +81,58 @@ def torch_pipeline(
     return embeddings, all_logits
 
 
-def pl_trainer_pipeline(
-    pandas_df: pd.DataFrame,
-    batch_size: int = 32,
-    use_grid: bool = False,
-    grid_size: int = 1,
-    cpu_count: int = 1,
-    top_k: int = 5,
-):
-    """Pipeline to extract embeddings and top-k logits using PyTorch Lightning."""
+# def pl_trainer_pipeline(
+#     pandas_df: pd.DataFrame,
+#     batch_size: int = 32,
+#     use_grid: bool = False,
+#     grid_size: int = 1,
+#     cpu_count: int = 1,
+#     top_k: int = 5,
+# ):
+#     """Pipeline to extract embeddings and top-k logits using PyTorch Lightning."""
 
-    # initialize DataModule
-    data_module = PlantDataModule(
-        pandas_df,
-        batch_size=batch_size,
-        use_grid=use_grid,
-        grid_size=grid_size,
-        num_workers=cpu_count,
-    )
+#     # initialize DataModule
+#     # data_module = PlantDataModule(
+#     #     pandas_df,
+#     #     batch_size=batch_size,
+#     #     use_grid=use_grid,
+#     #     grid_size=grid_size,
+#     #     num_workers=cpu_count,
+#     # )
 
-    # initialize Model
-    model = DINOv2LightningModel(top_k=top_k)
+#     # initialize Model
+#     model = DINOv2LightningModel(top_k=top_k)
 
-    # define Trainer (inference mode)
-    trainer = pl.Trainer(
-        accelerator=get_device(),
-        devices=1,
-        enable_progress_bar=True,
-    )
+#     # define Trainer (inference mode)
+#     trainer = pl.Trainer(
+#         accelerator=get_device(),
+#         devices=1,
+#         enable_progress_bar=True,
+#     )
 
-    # run Inference
-    predictions = trainer.predict(model, datamodule=data_module) or []
+#     # run Inference
+#     predictions = trainer.predict(model, datamodule=data_module) or []
 
-    all_embeddings = []
-    all_logits = []
-    for batch in predictions:
-        embed_batch, logits_batch = batch  # batch: List[Tuple[embeddings, logits]]
-        all_embeddings.append(embed_batch)  # keep embeddings as tensors
-        reshaped_logits = [
-            logits_batch[i : i + grid_size**2]
-            for i in range(0, len(logits_batch), grid_size**2)
-        ]
-        all_logits.extend(reshaped_logits)  # preserve batch structure
+#     all_embeddings = []
+#     all_logits = []
+#     for batch in predictions:
+#         embed_batch, logits_batch = batch  # batch: List[Tuple[embeddings, logits]]
+#         all_embeddings.append(embed_batch)  # keep embeddings as tensors
+#         reshaped_logits = [
+#             logits_batch[i : i + grid_size**2]
+#             for i in range(0, len(logits_batch), grid_size**2)
+#         ]
+#         all_logits.extend(reshaped_logits)  # preserve batch structure
 
-    # convert embeddings to tensor
-    embeddings = torch.cat(all_embeddings, dim=0)  # shape: [len(df), grid_size**2, 768]
+#     # convert embeddings to tensor
+#     embeddings = torch.cat(all_embeddings, dim=0)  # shape: [len(df), grid_size**2, 768]
 
-    if use_grid:
-        embeddings = embeddings.view(-1, grid_size**2, 768)
-    else:
-        embeddings = embeddings.view(-1, 1, 768)
+#     if use_grid:
+#         embeddings = embeddings.view(-1, grid_size**2, 768)
+#     else:
+#         embeddings = embeddings.view(-1, 1, 768)
 
-    return embeddings, all_logits
+#     return embeddings, all_logits
 
 
 def create_predictions_df(

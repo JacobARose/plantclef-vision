@@ -1,20 +1,25 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import os
-import pandas as pd
 from typing import Optional, Dict, Union
 import torch
-import pytorch_lightning as pl
 
-from torch.utils.data import DataLoader
 from torch.utils.data import Dataset as PyTorchDataset
 from torchvision.transforms import ToTensor
 from torchvision import transforms
-from datasets import Dataset as HFDataset, concatenate_datasets
+from datasets import (
+    Dataset as HFDataset,
+    DatasetDict as HFDatasetDict,
+    concatenate_datasets,
+    disable_progress_bars,
+)
 import PIL.Image
-from plantclef.serde import deserialize_image
-from plantclef.pytorch.model import DINOv2LightningModel
 from tqdm import tqdm
+
+from datasets.utils.logging import set_verbosity_error
+
+set_verbosity_error()
+disable_progress_bars()
 
 
 def custom_collate_fn(batch, use_grid):
@@ -47,19 +52,21 @@ class BasePlantDataset(ABC, PyTorchDataset):
     def __init__(
         self,
         transform: Optional[transforms.Compose] = None,
-        col_name: str = "data",
+        x_col: str = "image",
+        y_col: str = "label_idx",
         use_grid: bool = False,
         grid_size: int = 4,
     ):
         """
         Args:
             transform: torchvision transforms.Compose object
-            col_name: Column name containing image data
+            x_col: Column name containing image data
             use_grid: Whether to split images into a grid
             grid_size: Size of the grid to split images into
         """
         self.transform = transform or (lambda x: x)
-        self.col_name = col_name
+        self.x_col = x_col
+        self.y_col = y_col
         self.use_grid = use_grid
         self.grid_size = grid_size
 
@@ -67,22 +74,6 @@ class BasePlantDataset(ABC, PyTorchDataset):
     def _load_data(self) -> None:
         """Abstract method to load the dataset."""
         pass
-
-    # def _split_into_grid(self, image) -> list:
-    #     """Split an image into a grid of sub-images."""
-    #     image = transforms.ToPILImage()(image)
-    #     w, h = image.size
-    #     grid_w, grid_h = w // self.grid_size, h // self.grid_size
-    #     images = []
-    #     for i in range(self.grid_size):
-    #         for j in range(self.grid_size):
-    #             left = i * grid_w
-    #             upper = j * grid_h
-    #             right = left + grid_w
-    #             lower = upper + grid_h
-    #             crop_image = image.crop((left, upper, right, lower))
-    #             images.append(ToTensor()(crop_image))
-    #     return images
 
     def _split_into_grid(
         self, image: torch.Tensor, grid_size: Optional[int] = None
@@ -247,47 +238,47 @@ class BasePlantDataset(ABC, PyTorchDataset):
         plt.show()
 
 
-class DataFramePlantDataset(BasePlantDataset):
-    """Plant dataset implementation using a pandas DataFrame."""
+# class DataFramePlantDataset(BasePlantDataset):
+#     """Plant dataset implementation using a pandas DataFrame."""
 
-    def __init__(
-        self,
-        df: pd.DataFrame,
-        transform: Optional[transforms.Compose] = None,
-        col_name: str = "data",
-        use_grid: bool = False,
-        grid_size: int = 4,
-    ):
-        """
-        Args:
-            df: Pandas DataFrame containing image binary data
-            transform: torchvision transforms.Compose object
-            col_name: Column name containing image data
-            use_grid: Whether to split images into a grid
-            grid_size: Size of the grid to split images into
-        """
-        super().__init__(transform, col_name, use_grid, grid_size)
-        self.df = df
+#     def __init__(
+#         self,
+#         df: pd.DataFrame,
+#         transform: Optional[transforms.Compose] = None,
+#         x_col: str = "data",
+#         use_grid: bool = False,
+#         grid_size: int = 4,
+#     ):
+#         """
+#         Args:
+#             df: Pandas DataFrame containing image binary data
+#             transform: torchvision transforms.Compose object
+#             x_col: Column name containing image data
+#             use_grid: Whether to split images into a grid
+#             grid_size: Size of the grid to split images into
+#         """
+#         super().__init__(transform, x_col, use_grid, grid_size)
+#         self.df = df
 
-    def _load_data(self) -> None:
-        """Load data from DataFrame."""
-        self.df = self.df.copy()
+#     def _load_data(self) -> None:
+#         """Load data from DataFrame."""
+#         self.df = self.df.copy()
 
-    def _get_image_bytes(self, idx: int) -> bytes:
-        """Get image bytes from DataFrame."""
-        return self.df.iloc[idx][self.col_name]
+#     def _get_image_bytes(self, idx: int) -> bytes:
+#         """Get image bytes from DataFrame."""
+#         return self.df.iloc[idx][self.x_col]
 
-    def _get_image_tensor(self, idx: int) -> torch.Tensor:
-        example = self.df.iloc[idx, :]
-        img_bytes = example[self.col_name]
+#     def _get_image_tensor(self, idx: int) -> torch.Tensor:
+#         example = self.df.iloc[idx, :]
+#         img_bytes = example[self.x_col]
 
-        # Convert bytes to PIL image
-        img = deserialize_image(img_bytes)
-        return ToTensor()(img)
+#         # Convert bytes to PIL image
+#         img = deserialize_image(img_bytes)
+#         return ToTensor()(img)
 
-    def __len__(self) -> int:
-        """Get the length of the dataset."""
-        return len(self.df)
+#     def __len__(self) -> int:
+#         """Get the length of the dataset."""
+#         return len(self.df)
 
 
 # print("about to define HFPlantDataset")
@@ -296,9 +287,10 @@ class HFPlantDataset(BasePlantDataset):
 
     def __init__(
         self,
-        path: str,
+        path: Optional[str],
         transform: Optional[transforms.Compose] = None,
-        col_name: str = "data",
+        x_col: str = "image",
+        y_col: str = "label_idx",
         use_grid: bool = False,
         grid_size: int = 4,
     ):
@@ -306,13 +298,27 @@ class HFPlantDataset(BasePlantDataset):
         Args:
             path: Path to the saved dataset on disk
             transform: torchvision transforms.Compose object
-            col_name: Column name containing image data
+            x_col: Column name containing image data
             use_grid: Whether to split images into a grid
             grid_size: Size of the grid to split images into
         """
-        super().__init__(transform, col_name, use_grid, grid_size)
+        super().__init__(
+            transform, x_col=x_col, y_col=y_col, use_grid=use_grid, grid_size=grid_size
+        )
         self.path = path
-        self.dataset = self._load_nested_data(path)
+        self._dataset = None
+        if path is not None:
+            self.dataset = self._load_nested_data(path)
+
+    @property
+    def dataset(self) -> HFDataset | None:
+        if self._dataset is None:
+            raise ValueError("Dataset not loaded. Please load the dataset first.")
+        return self._dataset
+
+    @dataset.setter
+    def dataset(self, dataset: HFDataset):
+        self._dataset = dataset
 
     def _load_nested_data(self, path: str) -> HFDataset:
         """
@@ -334,19 +340,19 @@ class HFPlantDataset(BasePlantDataset):
     def _get_image_pil(self, idx: int) -> PIL.Image.Image:
         """Get image as PIL.Image from HuggingFace Dataset."""
         example = self.dataset[idx]
-        pil_img = example[self.col_name]
+        pil_img = example[self.x_col]
         return pil_img
 
     def _get_image_tensor(self, idx: int) -> torch.Tensor:
         example = self.dataset[idx]
-        pil_img = example[self.col_name]
+        pil_img = example[self.x_col]
         return ToTensor()(pil_img)
 
     def _get_image_bytes(self, idx: int) -> bytes:
         pass
 
     #     """Get image bytes from HuggingFace Dataset."""
-    #     return self.df.iloc[idx][self.col_name]
+    #     return self.df.iloc[idx][self.x_col]
 
     def __len__(self) -> int:
         """Get the length of the dataset."""
@@ -357,100 +363,158 @@ class HFPlantDataset(BasePlantDataset):
         return f"HFPlantDataset(\n{self.dataset.__repr__()}\n)"
 
 
-class PlantDataset(PyTorchDataset):
-    """Custom PyTorch Dataset for loading plant images from a Pandas DataFrame."""
+class HFPlantDatasetDict(HFPlantDataset):
+    """Plant dataset implementation using HuggingFace DatasetDict."""
 
     def __init__(
         self,
-        df,
-        transform=None,
-        col_name: str = "data",
+        paths: Dict[str, str],
+        transform: Optional[transforms.Compose] = None,
+        x_col: str = "image",
+        y_col: str = "label_idx",
         use_grid: bool = False,
-        grid_size: int = 4,
+        grid_size: int = 1,
+        subset: str = "train",
     ):
         """
         Args:
-            df (pd.DataFrame): Pandas DataFrame containing image binary data.
-            transform (torchvision.transforms.Compose): Image transformations.
-            use_grid (bool): Whether to split images into a grid.
-            grid_size (int): The size of the grid to split images into.
+            paths: Dictionary of dataset splits and their paths
+            transform: torchvision transforms.Compose object
+            x_col: Column name containing image data
+            y_col: Column name containing labels
+            use_grid: Whether to split images into a grid
+            grid_size: Size of the grid to split images into
         """
-        self.df = df
-        self.transform = transform
-        self.col_name = col_name
-        self.use_grid = use_grid
-        self.grid_size = grid_size
-
-    def __len__(self):
-        return len(self.df)
-
-    def _split_into_grid(self, image):
-        w, h = image.size
-        grid_w, grid_h = w // self.grid_size, h // self.grid_size
-        images = []
-        for i in range(self.grid_size):
-            for j in range(self.grid_size):
-                left = i * grid_w
-                upper = j * grid_h
-                right = left + grid_w
-                lower = upper + grid_h
-                crop_image = image.crop((left, upper, right, lower))
-                images.append(crop_image)
-        return images
-
-    def __getitem__(self, idx) -> list:
-        img_bytes = self.df.iloc[idx][self.col_name]  # column with image bytes
-        img = deserialize_image(img_bytes)  # convert from bytes to PIL image
-
-        if self.use_grid:
-            img_list = self._split_into_grid(img)
-            if self.transform:
-                img_list = [self.transform(image) for image in img_list]
-            else:  # no transform, shape: (grid_size**2, C, H, W)
-                img_list = [ToTensor()(image) for image in img_list]
-            return torch.stack(img_list)
-        # single image, shape: (C, H, W)
-        if self.transform:
-            return self.transform(img)  # (C, H, W)
-        return ToTensor()(img)  # (C, H, W)
-
-
-class PlantDataModule(pl.LightningDataModule):
-    """LightningDataModule for handling dataset loading and preparation."""
-
-    def __init__(
-        self,
-        pandas_df,
-        batch_size=32,
-        use_grid=False,
-        grid_size=4,
-        num_workers=4,
-    ):
-        super().__init__()
-        self.pandas_df = pandas_df
-        self.batch_size = batch_size
-        self.use_grid = use_grid
-        self.grid_size = grid_size
-        self.num_workers = num_workers
-
-    def setup(self, stage=None):
-        """Set up dataset and transformations."""
-
-        self.model = DINOv2LightningModel()
-        self.dataset = PlantDataset(
-            self.pandas_df,
-            self.model.transform,  # Use the model's transform
-            use_grid=self.use_grid,
-            grid_size=self.grid_size,
+        super().__init__(
+            path=None,
+            transform=transform,
+            x_col=x_col,
+            y_col=y_col,
+            use_grid=use_grid,
+            grid_size=grid_size,
         )
 
-    def predict_dataloader(self):
-        """Returns DataLoader for inference."""
-        return DataLoader(
-            self.dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-            collate_fn=custom_collate_fn_partial(self.use_grid),
-        )
+        self.subsets = [k for k in paths.keys() if k in ("train", "val", "test")]
+        self.paths = paths
+        self.datasets = self._load_subsets(paths)
+        self.set_subset(subset)
+
+    def set_subset(self, subset: str):
+        """
+        Set the current subset to be used for training or validation.
+        """
+        if subset not in self.subsets:
+            raise ValueError(f"Subset {subset} not found in self.subsets.")
+
+        self.dataset = self.datasets[subset]
+        # self.transform = self.get_transforms()
+
+    def _load_subsets(self, paths: Dict[str, str]) -> HFDatasetDict:
+        """
+        Load a dictionary of HuggingFace datasets and concatenate them.
+        """
+        # self.subsets = [k for k in paths.keys() if k in ("train", "val", "test")]
+
+        datasets = {}
+        for subset, p in paths.items():
+            datasets[subset] = self._load_nested_data(p)
+        return HFDatasetDict(datasets)
+
+
+# class PlantDataset(PyTorchDataset):
+#     """Custom PyTorch Dataset for loading plant images from a Pandas DataFrame."""
+
+#     def __init__(
+#         self,
+#         df,
+#         transform=None,
+#         x_col: str = "data",
+#         use_grid: bool = False,
+#         grid_size: int = 4,
+#     ):
+#         """
+#         Args:
+#             df (pd.DataFrame): Pandas DataFrame containing image binary data.
+#             transform (torchvision.transforms.Compose): Image transformations.
+#             use_grid (bool): Whether to split images into a grid.
+#             grid_size (int): The size of the grid to split images into.
+#         """
+#         self.df = df
+#         self.transform = transform
+#         self.x_col = x_col
+#         self.use_grid = use_grid
+#         self.grid_size = grid_size
+
+#     def __len__(self):
+#         return len(self.df)
+
+#     def _split_into_grid(self, image):
+#         w, h = image.size
+#         grid_w, grid_h = w // self.grid_size, h // self.grid_size
+#         images = []
+#         for i in range(self.grid_size):
+#             for j in range(self.grid_size):
+#                 left = i * grid_w
+#                 upper = j * grid_h
+#                 right = left + grid_w
+#                 lower = upper + grid_h
+#                 crop_image = image.crop((left, upper, right, lower))
+#                 images.append(crop_image)
+#         return images
+
+#     def __getitem__(self, idx) -> list:
+#         img_bytes = self.df.iloc[idx][self.x_col]  # column with image bytes
+#         img = deserialize_image(img_bytes)  # convert from bytes to PIL image
+
+#         if self.use_grid:
+#             img_list = self._split_into_grid(img)
+#             if self.transform:
+#                 img_list = [self.transform(image) for image in img_list]
+#             else:  # no transform, shape: (grid_size**2, C, H, W)
+#                 img_list = [ToTensor()(image) for image in img_list]
+#             return torch.stack(img_list)
+#         # single image, shape: (C, H, W)
+#         if self.transform:
+#             return self.transform(img)  # (C, H, W)
+#         return ToTensor()(img)  # (C, H, W)
+
+
+# class PlantDataModule(pl.LightningDataModule):
+#     """LightningDataModule for handling dataset loading and preparation."""
+
+#     def __init__(
+#         self,
+#         pandas_df,
+#         batch_size=32,
+#         use_grid=False,
+#         grid_size=4,
+#         num_workers=4,
+#     ):
+#         super().__init__()
+#         self.pandas_df = pandas_df
+#         self.batch_size = batch_size
+#         self.use_grid = use_grid
+#         self.grid_size = grid_size
+#         self.num_workers = num_workers
+
+#     def setup(self, stage=None):
+#         """Set up dataset and transformations."""
+
+#         self.model = DINOv2LightningModel()
+#         self.dataset = PlantDataset(
+#             self.pandas_df,
+#             self.model.transform,  # Use the model's transform
+#             use_grid=self.use_grid,
+#             grid_size=self.grid_size,
+#         )
+
+#     def predict_dataloader(self):
+#         """Returns DataLoader for inference."""
+#         return DataLoader(
+#             self.dataset,
+#             batch_size=self.batch_size,
+#             shuffle=False,
+#             num_workers=self.num_workers,
+#             persistent_workers=True,
+#             collate_fn=custom_collate_fn_partial(self.use_grid),
+#         )

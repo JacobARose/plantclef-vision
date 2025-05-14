@@ -6,6 +6,7 @@ from . import (
     utils,
     upload_to_s3,
     optimize_plantclef,
+    transforms,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "utils",
     "upload_to_s3",
     "optimize_plantclef",
+    "transforms",
 ]
