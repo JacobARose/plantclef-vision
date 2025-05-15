@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import os
-from typing import Optional, Dict, Union, Any
+from typing import Optional, Dict, Union, Any, Tuple
 import torch
 
 from torch.utils.data import Dataset as PyTorchDataset
@@ -22,6 +22,9 @@ from plantclef.datasets.transforms import get_transforms
 
 set_verbosity_error()
 disable_progress_bars()
+
+
+to_tensor = ToTensor()
 
 
 def custom_collate_fn(batch, use_grid):
@@ -99,21 +102,31 @@ class BasePlantDataset(ABC, PyTorchDataset):
 
         return tiles  # Returns a list of torch.Tensors
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get an item from the dataset using memory-efficient loading."""
 
         img = self._get_image_tensor(idx)
+        label = self._get_label_tensor(idx)
+
+        print("pre-transform")
 
         # Apply transforms to full image
         if self.transform:
             img = self.transform(img)
 
+        print("Finished transform")
+
         # Split into grid if required
         if self.use_grid:
             img_list = self._split_into_grid(img)
-            return torch.stack(img_list)
+            return torch.stack(img_list), label
         else:
-            return img
+            return img, label
+
+    @abstractmethod
+    def _get_label_tensor(self, idx: int) -> torch.Tensor:
+        """Get label tensor from the dataset."""
+        pass
 
     @abstractmethod
     def _get_image_tensor(self, idx: int) -> torch.Tensor:
@@ -349,10 +362,16 @@ class HFPlantDataset(BasePlantDataset):
         pil_img = example[self.x_col]
         return pil_img
 
+    def _get_label_tensor(self, idx: int) -> torch.Tensor:
+        """Get label tensor from the dataset."""
+        example = self.dataset[idx]
+        label = example[self.y_col]
+        return label
+
     def _get_image_tensor(self, idx: int) -> torch.Tensor:
         example = self.dataset[idx]
         pil_img = example[self.x_col]
-        return ToTensor()(pil_img)
+        return to_tensor(pil_img)
 
     def _get_image_bytes(self, idx: int) -> bytes:
         pass
@@ -407,7 +426,7 @@ class HFPlantDatasetDict(HFPlantDataset):
         if load_all_subsets:
             self.datasets = self._load_subsets(paths)
         else:
-            self.datasets = {}
+            self.datasets = HFDatasetDict()
         # self.datasets = self._load_subsets(paths)
         self.set_subset(subset)
         self.set_transform(transform)
