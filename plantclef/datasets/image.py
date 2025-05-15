@@ -13,11 +13,11 @@ from multiprocessing import Pool
 from typing import List, Tuple
 from PIL import Image
 from PIL.Image import Resampling
+import numpy as np
 import torch
 from torchvision.transforms.functional import pil_to_tensor
 from tqdm import tqdm
 from functools import partial
-from torchvision import transforms as T
 
 resampling_modes = {
     "nearest": Resampling.NEAREST,
@@ -27,6 +27,33 @@ resampling_modes = {
     "bicubic": Resampling.BICUBIC,
     "lanczos": Resampling.LANCZOS,
 }
+
+
+def pil_to_numpy(im: Image) -> np.array:
+    """
+    Efficient utility to convert a PIL Image to a numpy array
+
+    source: https://uploadcare.com/blog/fast-import-of-pillow-images-to-numpy-opencv-arrays/
+    """
+
+    im.load()
+    # unpack data
+    e = Image._getencoder(im.mode, "raw", im.mode)
+    e.setimage(im.im)
+
+    # NumPy buffer for the result
+    shape, typestr = Image._conv_type_shape(im)
+    data = np.empty(shape, dtype=np.dtype(typestr))
+    mem = data.data.cast("B", (data.data.nbytes,))
+
+    bufsize, s, offset = 65536, 0, 0
+    while not s:
+        _, s, d = e.encode(bufsize)
+        mem[offset : offset + len(d)] = d
+        offset += len(d)
+    if s < 0:
+        raise RuntimeError("encoder error %d in tobytes" % s)
+    return data
 
 
 def smart_resize(
@@ -64,7 +91,9 @@ def smart_resize(
 
     return new_image
 
-pil_to_tensor = T.ToTensor()
+
+# pil_to_tensor = T.ToTensor()
+
 
 def parse_image(
     file_path: str, target_height: int, target_width: int, mode: str = "nearest"

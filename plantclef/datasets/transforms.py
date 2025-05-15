@@ -8,15 +8,20 @@ Created by: Jacob A Rose
 
 import torch
 import albumentations as A
-from albumentations.pytorch.transforms import ToTensorV2
-import numpy as np
 import PIL.Image
-from typing import List, Callable
+from typing import Callable
 import cv2
+from torchvision.transforms import ToTensor
+
+from plantclef.preprocessing.image import pil_to_numpy
+
+cv2.setNumThreads(0)
+
+to_tensor = ToTensor()
 
 
 def get_transforms(is_training: bool = False) -> Callable:
-    tx = [
+    tranforms_list = [
         # A.Normalize(
         #     mean=(0.5, 0.5, 0.5),
         #     std=(0.5, 0.5, 0.5),
@@ -25,8 +30,8 @@ def get_transforms(is_training: bool = False) -> Callable:
     ]
 
     if is_training:
-        tx.extend(
-            *[
+        tranforms_list.extend(
+            [
                 A.RandomResizedCrop(
                     size=(518, 518),
                     scale=(0.08, 1.0),
@@ -42,7 +47,7 @@ def get_transforms(is_training: bool = False) -> Callable:
             ]
         )
     else:
-        tx.extend(
+        tranforms_list.extend(
             [
                 A.SmallestMaxSize(max_size=518, interpolation=cv2.INTER_AREA),
                 A.CenterCrop(518, 518),
@@ -52,28 +57,28 @@ def get_transforms(is_training: bool = False) -> Callable:
                     std=(0.229, 0.224, 0.225),
                     max_pixel_value=255.0,
                 ),
-                ToTensorV2(),
+                # ToTensorV2(),
             ]
         )
-    tx = A.Compose(tx, additional_targets=None)
+    tx = A.Compose(tranforms_list, additional_targets=None)
 
-    def transform_func(image: List[PIL.Image.Image]) -> np.ndarray:
-        image = np.array(image)
+    def transform_func(image: PIL.Image.Image) -> torch.Tensor:
+        image = pil_to_numpy(image)
         print("in transform_func")
         print(image.dtype)
         print(image.shape)
         # image = image.squeeze()
 
         image = tx(image=image)["image"]
-        return image
+        return to_tensor(image)
 
     def collate_fn(batch):
         print(type(batch))
-        print(len(batch))
+        # print(len(batch))
         if isinstance(batch, list):
             return torch.stack([transform_func(image=item) for item in batch])
         else:
-            print(batch.shape)
+            # print(batch.shape)
             return transform_func(image=batch)
 
     return collate_fn
