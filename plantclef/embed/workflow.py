@@ -28,6 +28,7 @@ from rich.repr import auto
 from rich.pretty import print as pprint
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import wandb
 
 
 def torch_pipeline(
@@ -353,9 +354,18 @@ def run_embed_test(args: Optional[argparse.Namespace] = None):
     """
     cfg = PipelineConfig.from_args(args)
     try:
+        wandb.init(
+            project="plantclef2024",
+            entity="plantclef-vision",
+            config=cfg.to_dict(),
+            name=f"embed-{cfg.dataset_name}-{cfg.subsets}",
+            job_type="embed",
+            tags=["embed", *cfg.subsets],
+        )
         embed_predict_save(cfg)
     except Exception as e:
         print(f"Error in embed_predict_save: {e}")
+        raise e
 
     print("All done!")
     print_current_time()
