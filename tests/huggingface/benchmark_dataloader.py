@@ -12,6 +12,7 @@ import time
 from typing import List, Dict
 import numpy as np
 from collections import defaultdict
+from tqdm import trange, tqdm
 
 
 class DataLoaderBenchmarker:
@@ -48,16 +49,27 @@ class DataLoaderBenchmarker:
             pin_memory=True,
         )
 
+        print("initiating warmup")
         # Warm up
-        for _ in range(self.warmup_iterations):
-            for _ in dataloader:
-                pass
+        # for _ in trange(self.warmup_iterations, desc="Warming up", position=0, leave=True):
+        #     for _ in tqdm((dataloader), desc="Warmup", position=1, leave=False):
+        #         pass
+        dataloader_iter = iter(dataloader)
+        for _ in trange(
+            self.warmup_iterations, desc="Warming up", position=0, leave=True
+        ):
+            next(dataloader_iter)
 
-        # Timing
+        print("warmup complete, Initiating benchmark")
         times = []
-        for _ in range(self.num_iterations):
+        for _ in trange(
+            self.num_iterations,
+            desc=f"Benchmarking {self.num_iterations} iterations",
+            position=0,
+            leave=True,
+        ):
             start_time = time.perf_counter()
-            for batch in dataloader:
+            for batch in tqdm(dataloader, desc="dataloader", position=1, leave=False):
                 pass
             end_time = time.perf_counter()
             times.append(end_time - start_time)
@@ -145,8 +157,8 @@ if __name__ == "__main__":
     name = "plantclef2024"
     subset = "val"
 
-    batch_sizes = [16, 32, 64, 128]
-    num_workers_list = [0, 2, 4]
+    batch_sizes = [64, 128]
+    num_workers_list = [2, 4]
     num_iterations = 5
     warmup_iterations = 2
 
@@ -160,7 +172,8 @@ if __name__ == "__main__":
     print(f"Warmup iterations: {warmup_iterations}")
     print_current_time()
 
-    data = make_dataset(name=name, subset=subset, load_all_subsets=True)
+    data = make_dataset(name=name, subset=subset, load_all_subsets=False)
+    data.set_transform()
 
     benchmarker = DataLoaderBenchmarker(
         data,

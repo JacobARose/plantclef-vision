@@ -13,7 +13,7 @@ from typing import Callable
 import cv2
 from torchvision.transforms import ToTensor
 
-from plantclef.preprocessing.image import pil_to_numpy
+from plantclef.datasets.image import pil_to_numpy
 
 cv2.setNumThreads(0)
 
@@ -64,16 +64,16 @@ def get_transforms(is_training: bool = False) -> Callable:
 
     def transform_func(image: PIL.Image.Image) -> torch.Tensor:
         image = pil_to_numpy(image)
-        print("in transform_func")
-        print(image.dtype)
-        print(image.shape)
+        # print("in transform_func")
+        # print(image.dtype)
+        # print(image.shape)
         # image = image.squeeze()
 
         image = tx(image=image)["image"]
         return to_tensor(image)
 
     def collate_fn(batch):
-        print(type(batch))
+        # print(type(batch))
         # print(len(batch))
         if isinstance(batch, list):
             return torch.stack([transform_func(image=item) for item in batch])

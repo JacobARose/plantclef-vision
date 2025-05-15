@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import os
-from typing import Optional, Dict, Union, Any, Tuple
+from typing import Optional, Dict, Union, Any
 import torch
 
 from torch.utils.data import Dataset as PyTorchDataset
@@ -102,30 +102,37 @@ class BasePlantDataset(ABC, PyTorchDataset):
 
         return tiles  # Returns a list of torch.Tensors
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """Get an item from the dataset using memory-efficient loading."""
 
-        img = self._get_image_tensor(idx)
         label = self._get_label_tensor(idx)
 
-        print("pre-transform")
+        # print("pre-transform")
 
         # Apply transforms to full image
         if self.transform:
+            img = self._get_image_pil(idx)
             img = self.transform(img)
+        else:
+            img = self._get_image_tensor(idx)
 
-        print("Finished transform")
+        # print("Finished transform")
 
         # Split into grid if required
         if self.use_grid:
             img_list = self._split_into_grid(img)
-            return torch.stack(img_list), label
+            img = torch.stack(img_list)
         else:
-            return img, label
+            return {"image": img, "label_idx": label}
 
     @abstractmethod
     def _get_label_tensor(self, idx: int) -> torch.Tensor:
         """Get label tensor from the dataset."""
+        pass
+
+    @abstractmethod
+    def _get_image_pil(self, idx: int) -> PIL.Image.Image:
+        """Get image as PIL.Image from HuggingFace Dataset."""
         pass
 
     @abstractmethod
@@ -168,6 +175,16 @@ class BasePlantDataset(ABC, PyTorchDataset):
         """
         min_dim = min(image.shape[1:])
         return transforms.CenterCrop(min_dim)(image)
+
+    @classmethod
+    def normalize_image(cls, image: torch.Tensor) -> torch.Tensor:
+        """
+        Normalize the image tensor pixel values to the range (0.0, 1.0) for visualization.
+        """
+
+        max_val = torch.max(torch.abs(image))
+        image = (image / max_val + 1.0) / 2.0
+        return image
 
     def plot_image_tiles(
         self,
