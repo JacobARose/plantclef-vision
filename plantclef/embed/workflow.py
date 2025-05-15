@@ -19,14 +19,13 @@ import pandas as pd
 from plantclef.pytorch.data import (
     HFDataset,
     HFPlantDataset,
-    # PlantDataModule,
-    custom_collate_fn_partial,
 )
 from plantclef.pytorch.data_catalog import make_dataset
 from plantclef.pytorch.model import DINOv2LightningModel
 from plantclef.embed.utils import print_current_time, print_dir_size
 from plantclef.config import BaseConfig
 from rich.repr import auto
+from rich.pretty import print as pprint
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -64,8 +63,13 @@ def torch_pipeline(
         batch_size=batch_size,
         shuffle=False,
         num_workers=cpu_count,
-        collate_fn=custom_collate_fn_partial(use_grid),
+        # collate_fn=custom_collate_fn_partial(use_grid),
     )
+    x_col = dataset.x_col
+    if use_grid:
+        predict_step = model.predict_grid_step
+    else:
+        predict_step = model.predict_step
 
     # run inference and collect embeddings with tqdm progress bar
     all_embeddings = []
@@ -73,7 +77,9 @@ def torch_pipeline(
     for batch in tqdm(
         dataloader, desc="Extracting embeddings and logits", unit="batch"
     ):
-        embeddings, logits = model.predict_grid_step(batch, batch_idx=0)
+        if isinstance(batch, dict):
+            batch = batch[x_col]
+        embeddings, logits = predict_step(batch, batch_idx=0)
         all_embeddings.append(embeddings.cpu())
         # Each image in the batch gets a list of grid_size**2 dicts, each containing the top-k logits for that grid tile
         all_logits.extend(logits)
@@ -271,10 +277,16 @@ class PipelineConfig(BaseConfig):
         config = cls(**(args))
 
         if dry_run:
+            print("[DRY RUN] Args:")
+            pprint(args)
             print("[DRY RUN] Configuration:")
-            for key, value in (args).items():
-                print(f"{key}: {value}")
+            pprint(config)
             exit(0)
+
+        print("[FULL RUN] Args:")
+        pprint(args)
+        print("[FULL RUN] Configuration:")
+        pprint(config)
         return config
 
 

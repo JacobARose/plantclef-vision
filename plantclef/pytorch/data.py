@@ -340,6 +340,7 @@ class HFPlantDataset(BasePlantDataset):
         transform: Optional[transforms.Compose] = None,
         x_col: str = "image",
         y_col: str = "label_idx",
+        id_col: str = "image_name",
         use_grid: bool = False,
         grid_size: int = 4,
         # subset: str = "train"
@@ -354,7 +355,12 @@ class HFPlantDataset(BasePlantDataset):
             subset: Subset of the dataset to load (e.g., 'train', 'val', 'test')
         """
         super().__init__(
-            transform, x_col=x_col, y_col=y_col, use_grid=use_grid, grid_size=grid_size
+            transform,
+            x_col=x_col,
+            y_col=y_col,
+            id_col=id_col,
+            use_grid=use_grid,
+            grid_size=grid_size,
         )
         self.path = path
         self._dataset = None
@@ -435,9 +441,10 @@ class HFPlantDatasetDict(HFPlantDataset):
         transform: Optional[transforms.Compose] = None,
         x_col: str = "image",
         y_col: str = "label_idx",
+        id_col: str = "image_name",
         use_grid: bool = False,
         grid_size: int = 1,
-        subset: str = "train",
+        subset: str = "val",
         load_all_subsets: bool = True,
         verbose: bool = False,
     ):
@@ -454,6 +461,7 @@ class HFPlantDatasetDict(HFPlantDataset):
             path=None,
             x_col=x_col,
             y_col=y_col,
+            id_col=id_col,
             use_grid=use_grid,
             grid_size=grid_size,
         )
