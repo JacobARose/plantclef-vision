@@ -10,8 +10,9 @@ If you run this script, it will create embeddings and logits for the full unlabe
 
 """
 
-from dataclasses import dataclass
-from typing import Optional
+import argparse
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict
 import torch
 import os
 import pandas as pd
@@ -21,6 +22,7 @@ from plantclef.pytorch.data import (
     # PlantDataModule,
     custom_collate_fn_partial,
 )
+from plantclef.pytorch.data_catalog import make_dataset
 from plantclef.pytorch.model import DINOv2LightningModel
 from plantclef.embed.utils import print_current_time, print_dir_size
 from plantclef.config import BaseConfig
@@ -152,8 +154,8 @@ def create_predictions_df(
 
     """
 
-    pred_df = pd.DataFrame({"image_name": ds.dataset["file_path"]})
-    pred_df["image_name"] = pred_df["image_name"].str.rsplit("/", n=1, expand=True)[1]
+    pred_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})
+    # pred_df["image_name"] = pred_df["image_name"].str.rsplit("/", n=1, expand=True)[1]
 
     pred_df = pred_df.convert_dtypes()
 
@@ -166,122 +168,169 @@ def create_predictions_df(
 
 @dataclass
 @auto
-class Config(BaseConfig):
-    use_grid: bool = True
+class PipelineConfig(BaseConfig):
+    """
+    Configuration class for the embedding pipeline.
+
+    """
+
+    dataset_name: str = "plantclef2024"
+    subsets: List[str] = field(default_factory=lambda: ["train", "val", "test"])
+    use_grid: bool = False
     grid_size: int = 3
-    image_size: int = 546
-    batch_size: int = 16
+    image_size: int = 518
+    batch_size: int = 32
     cpu_count: int = os.cpu_count() or 1
     top_k: int = 5
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
-    root_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025"
-    dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/competition-metadata/PlantCLEF2025_test_images/PlantCLEF2025_test_images"
-    hf_dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/parquet/plantclef2025/full_test/HF_dataset"
-
-    embeddings_dir: str = ""
-    test_embeddings_dir: str = ""
-    folder_name: str = ""
-    test_embeddings_path: str = ""
-    test_submission_path: str = ""
-    config_path: str = ""
+    embeddings_root_dir: str = (
+        "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/embeddings"
+    )
+    subset_embeddings_paths: Dict[str, str] = field(default_factory=dict)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.embeddings_dir = f"{self.root_dir}/embeddings"
-        self.test_embeddings_dir = f"{self.embeddings_dir}/full_test"
-        self.folder_name = f"test_grid_{self.grid_size}x{self.grid_size}_embeddings"
-        self.test_embeddings_path = f"{self.test_embeddings_dir}/{self.folder_name}"
-        self.test_submission_path = (
-            f"{self.test_embeddings_dir}/{self.folder_name}-submission.csv"
+
+        self.dataset_embeddings_dir = f"{self.embeddings_root_dir}/{self.dataset_name}"
+        self.subset_embeddings_paths = {
+            subset: f"{self.dataset_embeddings_dir}/{subset}" for subset in self.subsets
+        }
+        self.config_path = f"{self.dataset_embeddings_dir}/{self.subsets}-config.json"
+
+    @staticmethod
+    def parse_args() -> argparse.Namespace:
+        """
+        Parse command-line arguments to override default PipelineConfig values.
+        """
+
+        parser = argparse.ArgumentParser(description="PipelineConfig Arguments")
+        parser.add_argument(
+            "--dataset_name",
+            type=str,
+            default="plantclef2024",
+            help="Name of the dataset",
         )
-        self.config_path = f"{self.test_embeddings_path}-config.json"
+        parser.add_argument(
+            "--subsets",
+            type=str,
+            nargs="+",
+            default=["train", "val", "test"],
+            help="Dataset subsets",
+        )
+        parser.add_argument(
+            "--use_grid", action="store_true", help="Enable grid processing"
+        )
+        parser.add_argument(
+            "--grid_size", type=int, default=3, help="Grid size for image tiling"
+        )
+        parser.add_argument(
+            "--image_size", type=int, default=518, help="Image size for processing"
+        )
+        parser.add_argument(
+            "--batch_size", type=int, default=32, help="Batch size for DataLoader"
+        )
+        parser.add_argument(
+            "--cpu_count",
+            type=int,
+            default=os.cpu_count() or 1,
+            help="Number of CPU cores to use",
+        )
+        parser.add_argument(
+            "--top_k", type=int, default=5, help="Number of top logits to extract"
+        )
+        parser.add_argument(
+            "--device",
+            type=str,
+            default="cuda" if torch.cuda.is_available() else "cpu",
+            help="Device to use for inference",
+        )
+        parser.add_argument(
+            "--embeddings_root_dir",
+            type=str,
+            default="/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/embeddings",
+            help="Root directory for saving embeddings + logits",
+        )
 
-    def save(
-        self,
-        path: Optional[str] = None,
-        indent: Optional[int] = None,
-        exist_ok: bool = True,
-    ) -> str:
+        args = parser.parse_args()
+        return args
+
+    @classmethod
+    def from_args(cls, args: Optional[argparse.Namespace] = None):
         """
-        Save the config parameters to a JSON file.
-
-        If path is None, the config will be saved to the default path.
-
-        To load, use `cfg = Config.load(path)`.
-
-        Args:
-            filename: Path to save the file
-            indent: Optional indentation for pretty printing (None for compact)
+        Create a PipelineConfig instance from command-line arguments.
         """
-
-        path = path or self.config_path
-
-        if not path.endswith(".json"):
-            path = f"{path}.json"
-
-        super().save(path, indent, exist_ok=exist_ok)
-        self.config_path = path
-        return self.config_path
+        args = args or cls.parse_args()
+        config = cls(**vars(args))
+        return config
 
 
-def make_predictions_and_save(
-    cfg: Config,
+def embed_predict_save(
+    cfg: PipelineConfig,
 ):
     """
     Make predictions and save them to disk.
     """
 
-    # Create the directory if it doesn't exist
-    print(f"[RUNNING] os.makedirs({cfg.test_embeddings_dir}, exist_ok=True)")
-    os.makedirs(cfg.test_embeddings_dir, exist_ok=True)
+    # ds = HFPlantDataset(
+    #     path=cfg.hf_dataset_dir,
+    #     transform=None,
+    #     col_name="image",
+    #     use_grid=cfg.use_grid,
+    #     grid_size=cfg.grid_size,
+    # )
+    # ds.transform = ds.get_transforms(cfg.image_size)
 
-    ds = HFPlantDataset(
-        path=cfg.hf_dataset_dir,
-        transform=None,
-        col_name="image",
-        use_grid=cfg.use_grid,
-        grid_size=cfg.grid_size,
-    )
-    ds.transform = ds.get_transforms(cfg.image_size)
+    print(f"[RUNNING] make_dataset(name={cfg.dataset_name}, load_all_subsets=False)")
+    ds = make_dataset(name="plantclef2024", load_all_subsets=False)
 
-    print(
-        f"Initiating torch_pipeline on dataset of length {len(ds)} using batch_size {cfg.batch_size} and grid_size {cfg.grid_size}"
-    )
-    print_current_time()
+    for subset in cfg.subsets:
+        ds.set_subset(subset)
+        ds.set_transform(crop_size=cfg.image_size)
 
-    embeddings, logits = torch_pipeline(
-        dataset=ds,
-        batch_size=cfg.batch_size,
-        use_grid=cfg.use_grid,
-        grid_size=cfg.grid_size,
-        cpu_count=cfg.cpu_count,
-        top_k=cfg.top_k,
-        device=cfg.device,
-    )
+        subset_embeddings_path = cfg.subset_embeddings_paths[subset]
+        # Create the directory if it doesn't exist
+        print(f"[RUNNING] os.makedirs({subset_embeddings_path}, exist_ok=True)")
+        os.makedirs(subset_embeddings_path, exist_ok=True)
 
-    pred_df = create_predictions_df(ds, embeddings, logits)
+        print(
+            f"Initiating torch_pipeline on dataset subset {subset} of length {len(ds)} using batch_size {cfg.batch_size}"
+        )
 
-    pred_ds = HFDataset.from_pandas(pred_df)
-    pred_ds.save_to_disk(cfg.test_embeddings_path)
+        print_current_time()
 
-    print(f"Predictions saved to {cfg.test_embeddings_path}")
-    print_current_time()
+        embeddings, logits = torch_pipeline(
+            dataset=ds,
+            batch_size=cfg.batch_size,
+            use_grid=cfg.use_grid,
+            grid_size=cfg.grid_size,
+            cpu_count=cfg.cpu_count,
+            top_k=cfg.top_k,
+            device=cfg.device,
+        )
 
-    print_dir_size(cfg.test_embeddings_dir)
+        pred_df = create_predictions_df(ds, embeddings, logits)
+
+        pred_ds = HFDataset.from_pandas(pred_df)
+        pred_ds.save_to_disk(subset_embeddings_path)
+
+        print(f"Predictions saved to {subset_embeddings_path}")
+        print_current_time()
+
+        print_dir_size(subset_embeddings_path)
 
 
-def run_embed_test():
+def run_embed_test(args: Optional[argparse.Namespace] = None):
     """
 
     Create embeddings from the full test set using the DINOv2 model and save them to disk.
 
     """
-    cfg = Config()
+    cfg = PipelineConfig.from_args(args)
     try:
-        make_predictions_and_save(cfg)
+        embed_predict_save(cfg)
     except Exception as e:
-        print(f"Error in make_predictions_and_save: {e}")
+        print(f"Error in embed_predict_save: {e}")
 
     print("All done!")
     print_current_time()
@@ -292,3 +341,49 @@ if __name__ == "__main__":
     print_current_time()
 
     run_embed_test()
+
+
+#################
+
+# [EDITOR'S NOTE] -- (Added Wednesday May 14th, 2025) -- The following is legacy code for just the platnclef2025 unlabeled test quadrat images, while I focus on making the plantclef2024 train-val-test subsets to work.
+
+
+# @dataclass
+# @auto
+# class PipelineConfig(BaseConfig):
+#     """
+#     Configuration class for the embedding pipeline.
+
+#     """
+#     dataset_name: str = "plantclef2024"
+#     subsets: List[str] = field(default_factory=lambda: ["train", "val", "test"])
+#     use_grid: bool = False
+#     grid_size: int = 3
+#     image_size: int = 518
+#     batch_size: int = 32
+#     cpu_count: int = os.cpu_count() or 1
+#     top_k: int = 5
+#     device: str = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+#     # root_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025"
+#     # dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/competition-metadata/PlantCLEF2025_test_images/PlantCLEF2025_test_images"
+#     # hf_dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/parquet/plantclef2025/full_test/HF_dataset"
+
+#     # embeddings_root_dir: str = ""
+#     # test_embeddings_dir: str = ""
+#     # folder_name: str = ""
+#     # test_embeddings_path: str = ""
+#     # test_submission_path: str = ""
+#     # config_path: str = ""
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.embeddings_root_dir = f"{self.root_dir}/embeddings"
+#         self.test_embeddings_dir = f"{self.embeddings_root_dir}/full_test"
+#         self.folder_name = f"test_grid_{self.grid_size}x{self.grid_size}_embeddings"
+#         self.test_embeddings_path = f"{self.test_embeddings_dir}/{self.folder_name}"
+#         self.test_submission_path = (
+#             f"{self.test_embeddings_dir}/{self.folder_name}-submission.csv"
+#         )
+#         self.config_path = f"{self.test_embeddings_path}-config.json"
