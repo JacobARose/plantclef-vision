@@ -189,9 +189,7 @@ class PipelineConfig(BaseConfig):
     )
     subset_embeddings_paths: Dict[str, str] = field(default_factory=dict)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    def __post_init__(self, *args, **kwargs):
         self.dataset_embeddings_dir = f"{self.embeddings_root_dir}/{self.dataset_name}"
         self.subset_embeddings_paths = {
             subset: f"{self.dataset_embeddings_dir}/{subset}" for subset in self.subsets
@@ -251,17 +249,32 @@ class PipelineConfig(BaseConfig):
             default="/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/embeddings",
             help="Root directory for saving embeddings + logits",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="If set, will print config and exit without running the pipeline",
+        )
 
         args = parser.parse_args()
+
+        # If dry-run is set, print the config and exit
+
         return args
 
     @classmethod
-    def from_args(cls, args: Optional[argparse.Namespace] = None):
+    def from_args(cls, args: Optional[Dict | argparse.Namespace] = {}):
         """
         Create a PipelineConfig instance from command-line arguments.
         """
-        args = args or cls.parse_args()
-        config = cls(**vars(args))
+        args = vars((args or cls.parse_args()))
+        dry_run = args.pop("dry_run")
+        config = cls(**(args))
+
+        if dry_run:
+            print("[DRY RUN] Configuration:")
+            for key, value in (args).items():
+                print(f"{key}: {value}")
+            exit(0)
         return config
 
 

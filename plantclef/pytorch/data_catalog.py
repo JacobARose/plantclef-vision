@@ -13,7 +13,9 @@ Run script to see available datasets and their configs.
 """
 
 from dataclasses import dataclass, asdict
-from plantclef.pytorch.data import HFPlantDatasetDict
+
+# from plantclef.pytorch.data import HFPlantDatasetDict
+import plantclef
 
 
 # data_subset_paths = {
@@ -38,7 +40,9 @@ class DatasetConfig:
     id_col: str
 
 
-def get_config_from_dataset(ds: HFPlantDatasetDict) -> DatasetConfig:
+def get_config_from_dataset(
+    ds: "plantclef.pytorch.data.HFPlantDatasetDict",
+) -> DatasetConfig:
     """
     Get the DatasetConfig from a HFPlantDatasetDict.
     """
@@ -64,7 +68,9 @@ PlantCLEF2024DatasetConfig = DatasetConfig(
 )
 
 
-def make_dataset_from_config(cfg: DatasetConfig, **kwargs) -> HFPlantDatasetDict:
+def make_dataset_from_config(
+    cfg: DatasetConfig, **kwargs
+) -> "plantclef.pytorch.data.HFPlantDatasetDict":
     """
     Create a dataset from the configuration.
     """
@@ -83,7 +89,9 @@ def make_dataset_from_config(cfg: DatasetConfig, **kwargs) -> HFPlantDatasetDict
 available_datasets_configs = {"plantclef2024": PlantCLEF2024DatasetConfig}
 
 
-def make_dataset(name: str = "", **kwargs) -> HFPlantDatasetDict:
+def make_dataset(
+    name: str = "", **kwargs
+) -> "plantclef.pytorch.data.HFPlantDatasetDict":
     """
     Main function to create an HFPlantDatasetDict using a known DatasetConfig by querying with a str name.
     """
