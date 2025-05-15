@@ -20,7 +20,7 @@ cv2.setNumThreads(0)
 to_tensor = ToTensor()
 
 
-def get_transforms(is_training: bool = False) -> Callable:
+def get_transforms(is_training: bool = False, crop_size: int = 518) -> Callable:
     tranforms_list = [
         # A.Normalize(
         #     mean=(0.5, 0.5, 0.5),
@@ -33,7 +33,7 @@ def get_transforms(is_training: bool = False) -> Callable:
         tranforms_list.extend(
             [
                 A.RandomResizedCrop(
-                    size=(518, 518),
+                    size=(crop_size, crop_size),
                     scale=(0.08, 1.0),
                     ratio=(0.75, 1.33),
                     interpolation=cv2.INTER_LINEAR,
@@ -49,8 +49,8 @@ def get_transforms(is_training: bool = False) -> Callable:
     else:
         tranforms_list.extend(
             [
-                A.SmallestMaxSize(max_size=518, interpolation=cv2.INTER_AREA),
-                A.CenterCrop(518, 518),
+                A.SmallestMaxSize(max_size=crop_size, interpolation=cv2.INTER_AREA),
+                A.CenterCrop(crop_size, crop_size),
                 # A.Normalize(mean=0.0, std=1.0),
                 A.Normalize(
                     mean=(0.485, 0.456, 0.406),

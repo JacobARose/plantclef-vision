@@ -23,6 +23,7 @@ class DataLoaderBenchmarker:
         num_workers_list: List[int],
         num_iterations: int = 10,
         warmup_iterations: int = 2,
+        num_batches_per_iteration: int = 100,
     ):
         """
         Args:
@@ -37,6 +38,7 @@ class DataLoaderBenchmarker:
         self.num_workers_list = num_workers_list
         self.num_iterations = num_iterations
         self.warmup_iterations = warmup_iterations
+        self.num_batches_per_iteration = num_batches_per_iteration
         self.results = defaultdict(list)
 
     def benchmark_dataloader(self, batch_size: int, num_workers: int) -> Dict:
@@ -54,13 +56,14 @@ class DataLoaderBenchmarker:
         # for _ in trange(self.warmup_iterations, desc="Warming up", position=0, leave=True):
         #     for _ in tqdm((dataloader), desc="Warmup", position=1, leave=False):
         #         pass
+
         dataloader_iter = iter(dataloader)
         for _ in trange(
             self.warmup_iterations, desc="Warming up", position=0, leave=True
         ):
             next(dataloader_iter)
-
         print("warmup complete, Initiating benchmark")
+
         times = []
         for _ in trange(
             self.num_iterations,
@@ -69,7 +72,18 @@ class DataLoaderBenchmarker:
             leave=True,
         ):
             start_time = time.perf_counter()
-            for batch in tqdm(dataloader, desc="dataloader", position=1, leave=False):
+            dataloader_iter = iter(dataloader)
+            batch_idx = 0
+            for batch in tqdm(
+                dataloader_iter,
+                desc="dataloader",
+                position=1,
+                leave=False,
+                total=self.num_batches_per_iteration,
+            ):
+                batch_idx += 1
+                if batch_idx >= self.num_batches_per_iteration:
+                    break
                 pass
             end_time = time.perf_counter()
             times.append(end_time - start_time)
@@ -82,7 +96,8 @@ class DataLoaderBenchmarker:
             "num_workers": num_workers,
             "avg_time": avg_time,
             "std_time": std_time,
-            "throughput": len(self.dataset) / avg_time,
+            # "throughput": len(self.dataset) / avg_time,
+            "throughput": self.num_batches_per_iteration * batch_size / avg_time,
         }
 
     def run_benchmark(self) -> List[Dict]:
@@ -161,6 +176,7 @@ if __name__ == "__main__":
     num_workers_list = [2, 4]
     num_iterations = 5
     warmup_iterations = 2
+    num_batches_per_iteration = 100
 
     # Create dataset and run benchmarks
     # dataset = DummyDataset(1000)
@@ -170,6 +186,7 @@ if __name__ == "__main__":
     print(f"Num workers: {num_workers_list}")
     print(f"Num iterations: {num_iterations}")
     print(f"Warmup iterations: {warmup_iterations}")
+    print(f"Num batches per iteration: {num_batches_per_iteration}")
     print_current_time()
 
     data = make_dataset(name=name, subset=subset, load_all_subsets=False)
@@ -181,6 +198,7 @@ if __name__ == "__main__":
         num_workers_list=num_workers_list,
         num_iterations=num_iterations,
         warmup_iterations=warmup_iterations,
+        num_batches_per_iteration=num_batches_per_iteration,
     )
 
     results = benchmarker.run_benchmark()

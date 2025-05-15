@@ -19,6 +19,8 @@ from tqdm import tqdm
 from datasets.utils.logging import set_verbosity_error
 
 from plantclef.datasets.transforms import get_transforms
+from plantclef.pytorch.data_catalog import get_config_from_dataset, DatasetConfig
+
 
 set_verbosity_error()
 disable_progress_bars()
@@ -59,6 +61,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
         transform: Optional[transforms.Compose] = None,
         x_col: str = "image",
         y_col: str = "label_idx",
+        id_col: str = "image_name",
         use_grid: bool = False,
         grid_size: int = 4,
         # subset: str = "train"
@@ -73,6 +76,7 @@ class BasePlantDataset(ABC, PyTorchDataset):
         self.transform = transform or (lambda x: x)
         self.x_col = x_col
         self.y_col = y_col
+        self.id_col = id_col
         self.use_grid = use_grid
         self.grid_size = grid_size
         # self.subset = subset
@@ -102,10 +106,11 @@ class BasePlantDataset(ABC, PyTorchDataset):
 
         return tiles  # Returns a list of torch.Tensors
 
-    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
         """Get an item from the dataset using memory-efficient loading."""
 
         label = self._get_label_tensor(idx)
+        sample_id = self._get_sample_id(idx)
 
         # print("pre-transform")
 
@@ -122,8 +127,13 @@ class BasePlantDataset(ABC, PyTorchDataset):
         if self.use_grid:
             img_list = self._split_into_grid(img)
             img = torch.stack(img_list)
-        else:
-            return {"image": img, "label_idx": label}
+
+        return {"image": img, "label_idx": label, self.id_col: sample_id}
+
+    @abstractmethod
+    def _get_sample_id(self, idx: int) -> str:
+        """Get sample ID from the dataset."""
+        pass
 
     @abstractmethod
     def _get_label_tensor(self, idx: int) -> torch.Tensor:
@@ -145,27 +155,32 @@ class BasePlantDataset(ABC, PyTorchDataset):
         """Abstract method to get image bytes from the dataset."""
         pass
 
-    def get_transforms(
-        self,
-        image_size: Optional[Dict[str, int]] = None,
-        crop_size: Optional[Dict[str, int]] = None,
-    ):
-        image_size = image_size or {"shortest_edge": 518}
-        crop_size = crop_size or {"height": 518, "width": 518}
-        return transforms.Compose(
-            [
-                transforms.Resize(
-                    size=image_size["shortest_edge"],
-                    interpolation=transforms.InterpolationMode.BICUBIC,
-                    max_size=None,
-                    antialias=True,
-                ),
-                transforms.CenterCrop(size=(crop_size["height"], crop_size["width"])),
-                transforms.Normalize(
-                    mean=[0.4850, 0.4560, 0.4060], std=[0.2290, 0.2240, 0.2250]
-                ),
-            ]
-        )
+    # def get_transforms(
+    #     self,
+    #     image_size: Optional[Dict[str, int]] = None,
+    #     crop_size: Optional[Dict[str, int]] = None,
+    # ):
+    #     image_size = image_size or {"shortest_edge": 518}
+    #     crop_size = crop_size or {"height": 518, "width": 518}
+    #     return transforms.Compose(
+    #         [
+    #             transforms.Resize(
+    #                 size=image_size["shortest_edge"],
+    #                 interpolation=transforms.InterpolationMode.BICUBIC,
+    #                 max_size=None,
+    #                 antialias=True,
+    #             ),
+    #             transforms.CenterCrop(size=(crop_size["height"], crop_size["width"])),
+    #             transforms.Normalize(
+    #                 mean=[0.4850, 0.4560, 0.4060], std=[0.2290, 0.2240, 0.2250]
+    #             ),
+    #         ]
+    #     )
+
+    @abstractmethod
+    def get_config(self) -> DatasetConfig:
+        pass
+        # return get_config_from_dataset(self)
 
     @classmethod
     def center_crop(cls, image: torch.Tensor) -> torch.Tensor:
@@ -373,6 +388,12 @@ class HFPlantDataset(BasePlantDataset):
         """Load data from disk using HuggingFace Dataset."""
         return HFDataset.load_from_disk(path)
 
+    def _get_sample_id(self, idx: int) -> str:
+        """Get sample ID from the dataset."""
+        example = self.dataset[idx]
+        sample_id = example[self.id_col]
+        return sample_id
+
     def _get_image_pil(self, idx: int) -> PIL.Image.Image:
         """Get image as PIL.Image from HuggingFace Dataset."""
         example = self.dataset[idx]
@@ -463,16 +484,18 @@ class HFPlantDatasetDict(HFPlantDataset):
         self.subset = subset
         # self.transform = self.get_transforms()
 
-    def get_transforms(self, is_training: bool = False):
-        return get_transforms(is_training=is_training)
+    def get_transforms(self, is_training: bool = False, crop_size: int = 518):
+        return get_transforms(is_training=is_training, crop_size=crop_size)
 
-    def set_transform(self, transform: Optional[transforms.Compose] = None) -> None:
+    def set_transform(
+        self, transform: Optional[transforms.Compose] = None, **kwargs
+    ) -> None:
         """
         Set the transform for the dataset.
         Must be run after `self.set_subset` to ensure `self.dataset` is not None.
         """
         is_training = self.subset == "train"
-        transform = transform or self.get_transforms(is_training=is_training)
+        transform = transform or self.get_transforms(is_training=is_training, **kwargs)
         self.transform = transform
         # self.dataset.transform = transform
 
@@ -512,6 +535,9 @@ class HFPlantDatasetDict(HFPlantDataset):
         yield "Paths:"
         for subset, path in self.paths.items():
             yield f"{subset}: ", path
+
+    def get_config(self) -> DatasetConfig:
+        return get_config_from_dataset(self)
 
 
 # class PlantDataset(PyTorchDataset):

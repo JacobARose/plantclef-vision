@@ -35,6 +35,19 @@ class DatasetConfig:
     paths: SubsetDataConfig
     x_col: str
     y_col: str
+    id_col: str
+
+
+def get_config_from_dataset(ds: HFPlantDatasetDict) -> DatasetConfig:
+    """
+    Get the DatasetConfig from a HFPlantDatasetDict.
+    """
+    return DatasetConfig(
+        paths=SubsetDataConfig(**ds.paths),
+        x_col=ds.x_col,
+        y_col=ds.y_col,
+        id_col=ds.id_col,
+    )
 
 
 PlantCLEF2024DatasetConfig = DatasetConfig(
@@ -47,10 +60,11 @@ PlantCLEF2024DatasetConfig = DatasetConfig(
     ),
     x_col="image",
     y_col="label_idx",
+    id_col="image_name",
 )
 
 
-def make_dataset_from_config(cfg: DatasetConfig, **kwargs):
+def make_dataset_from_config(cfg: DatasetConfig, **kwargs) -> HFPlantDatasetDict:
     """
     Create a dataset from the configuration.
     """
