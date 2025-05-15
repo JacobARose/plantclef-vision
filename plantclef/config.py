@@ -17,6 +17,8 @@ from typing import Optional, Dict, Any
 @dataclass
 @auto
 class BaseConfig:
+    config_path: str = "config.json"
+
     def to_dict(self):
         """Convert the dataclass to a dictionary."""
         out = asdict(self)
@@ -32,16 +34,23 @@ class BaseConfig:
 
     def save(
         self, path: str, indent: Optional[int] = None, exist_ok: bool = True
-    ) -> None:
+    ) -> str:
         """Save the dataclass to a JSON file.
+
+        To load, use `cfg = Config.load(path)`.
 
         Args:
             filename: Path to save the file. Should end with .json
             indent: Optional indentation for pretty printing (None for compact)
         """
+        path = path or self.config_path
+        if not path.endswith(".json"):
+            path += ".json"
+        path = os.path.abspath(os.path.expanduser(path))
         os.makedirs(os.path.dirname(path), exist_ok=exist_ok)
         with open(path, "w") as f:
             json.dump(asdict(self), f, indent=indent)
+        return path
 
     @classmethod
     def load(cls, filename: str):
