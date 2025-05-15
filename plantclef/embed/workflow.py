@@ -25,7 +25,7 @@ from plantclef.pytorch.model import DINOv2LightningModel
 from plantclef.embed.utils import print_current_time, print_dir_size
 from plantclef.config import BaseConfig
 from rich.repr import auto
-from rich.pretty import print as pprint
+from rich import print as pprint
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import wandb
@@ -64,6 +64,7 @@ def torch_pipeline(
         batch_size=batch_size,
         shuffle=False,
         num_workers=cpu_count,
+        pin_memory=True,
         # collate_fn=custom_collate_fn_partial(use_grid),
     )
     x_col = dataset.x_col
@@ -356,7 +357,7 @@ def run_embed_test(args: Optional[argparse.Namespace] = None):
     try:
         wandb.init(
             project="plantclef2024",
-            entity="plantclef-vision",
+            entity="jrose",
             config=cfg.to_dict(),
             name=f"embed-{cfg.dataset_name}-{cfg.subsets}",
             job_type="embed",
