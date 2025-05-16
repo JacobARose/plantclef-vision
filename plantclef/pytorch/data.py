@@ -109,17 +109,22 @@ class BasePlantDataset(ABC, PyTorchDataset):
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         """Get an item from the dataset using memory-efficient loading."""
 
-        label = self._get_label_tensor(idx)
-        sample_id = self._get_sample_id(idx)
+        with torch.profiler.record_function("_get_label_tensor"):
+            label = self._get_label_tensor(idx)
+        with torch.profiler.record_function("_get_sample_id"):
+            sample_id = self._get_sample_id(idx)
 
         # print("pre-transform")
 
         # Apply transforms to full image
         if self.transform:
-            img = self._get_image_pil(idx)
-            img = self.transform(img)
+            with torch.profiler.record_function("_get_image_pil"):
+                img = self._get_image_pil(idx)
+            with torch.profiler.record_function("transform"):
+                img = self.transform(img)
         else:
-            img = self._get_image_tensor(idx)
+            with torch.profiler.record_function("_get_image_tensor"):
+                img = self._get_image_tensor(idx)
 
         # print("Finished transform")
 
