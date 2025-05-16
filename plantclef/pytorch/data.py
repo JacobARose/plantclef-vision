@@ -109,22 +109,24 @@ class BasePlantDataset(ABC, PyTorchDataset):
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         """Get an item from the dataset using memory-efficient loading."""
 
-        with torch.profiler.record_function("_get_label_tensor"):
-            label = self._get_label_tensor(idx)
-        with torch.profiler.record_function("_get_sample_id"):
-            sample_id = self._get_sample_id(idx)
+        row = self._get_row(idx)
+
+        with torch.profiler.record_function("_get_label_tensor(idx, row)"):
+            label = self._get_label_tensor(idx, row=row)
+        with torch.profiler.record_function("_get_sample_id(idx, row)"):
+            sample_id = self._get_sample_id(idx, row=row)
 
         # print("pre-transform")
 
         # Apply transforms to full image
         if self.transform:
-            with torch.profiler.record_function("_get_image_pil"):
-                img = self._get_image_pil(idx)
+            with torch.profiler.record_function("_get_image_pil(idx, row)"):
+                img = self._get_image_pil(idx, row=row)
             with torch.profiler.record_function("transform"):
                 img = self.transform(img)
         else:
-            with torch.profiler.record_function("_get_image_tensor"):
-                img = self._get_image_tensor(idx)
+            with torch.profiler.record_function("_get_image_tensor(idx, row)"):
+                img = self._get_image_tensor(idx, row=row)
 
         # print("Finished transform")
 
@@ -136,22 +138,35 @@ class BasePlantDataset(ABC, PyTorchDataset):
         return {"image": img, "label_idx": label, self.id_col: sample_id}
 
     @abstractmethod
-    def _get_sample_id(self, idx: int) -> str:
+    def _get_row(self, idx: int) -> dict:
+        """Get row from the dataset."""
+        pass
+
+    @abstractmethod
+    def _get_sample_id(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> str:
         """Get sample ID from the dataset."""
         pass
 
     @abstractmethod
-    def _get_label_tensor(self, idx: int) -> torch.Tensor:
+    def _get_label_tensor(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> torch.Tensor:
         """Get label tensor from the dataset."""
         pass
 
     @abstractmethod
-    def _get_image_pil(self, idx: int) -> PIL.Image.Image:
+    def _get_image_pil(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> PIL.Image.Image:
         """Get image as PIL.Image from HuggingFace Dataset."""
         pass
 
     @abstractmethod
-    def _get_image_tensor(self, idx: int) -> torch.Tensor:
+    def _get_image_tensor(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> torch.Tensor:
         """Abstract method to get image tensor from the dataset."""
         pass
 
@@ -399,27 +414,52 @@ class HFPlantDataset(BasePlantDataset):
         """Load data from disk using HuggingFace Dataset."""
         return HFDataset.load_from_disk(path)
 
-    def _get_sample_id(self, idx: int) -> str:
+    def _get_row(self, idx: int) -> dict:
+        """Get row from the dataset."""
+        with torch.profiler.record_function("self.dataset[idx]"):
+            example = self.dataset[idx]
+        return example
+
+    def _get_sample_id(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> str:
         """Get sample ID from the dataset."""
-        example = self.dataset[idx]
-        sample_id = example[self.id_col]
+        if row is None:
+            with torch.profiler.record_function("self._get_row[idx]"):
+                row = self._get_row(idx)
+        with torch.profiler.record_function("row[self.id_col]"):
+            sample_id = row[self.id_col]
         return sample_id
 
-    def _get_image_pil(self, idx: int) -> PIL.Image.Image:
+    def _get_image_pil(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> PIL.Image.Image:
         """Get image as PIL.Image from HuggingFace Dataset."""
-        example = self.dataset[idx]
-        pil_img = example[self.x_col]
+        if row is None:
+            with torch.profiler.record_function("self._get_row(idx)"):
+                row = self._get_row(idx)
+        with torch.profiler.record_function("row[self.x_col]"):
+            pil_img = row[self.x_col]
         return pil_img
 
-    def _get_label_tensor(self, idx: int) -> torch.Tensor:
+    def _get_label_tensor(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> torch.Tensor:
         """Get label tensor from the dataset."""
-        example = self.dataset[idx]
-        label = example[self.y_col]
+        if row is None:
+            with torch.profiler.record_function("self._get_row(idx)"):
+                row = self._get_row(idx)
+        with torch.profiler.record_function("row[self.y_col]"):
+            label = row[self.y_col]
         return label
 
-    def _get_image_tensor(self, idx: int) -> torch.Tensor:
-        example = self.dataset[idx]
-        pil_img = example[self.x_col]
+    def _get_image_tensor(
+        self, idx: Optional[int] = None, row: Optional[dict] = None
+    ) -> torch.Tensor:
+        if row is None:
+            with torch.profiler.record_function("self._get_row(idx)"):
+                row = self._get_row(idx)
+        pil_img = row[self.x_col]
         return to_tensor(pil_img)
 
     def _get_image_bytes(self, idx: int) -> bytes:
