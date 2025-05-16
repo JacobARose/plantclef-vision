@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import os
-from typing import Optional, Dict, Union, Any
+from typing import Optional, Dict, Union, Any, Callable
 import torch
 
 from torch.utils.data import Dataset as PyTorchDataset
@@ -537,7 +537,9 @@ class HFPlantDatasetDict(HFPlantDataset):
         self.subset = subset
         # self.transform = self.get_transforms()
 
-    def get_transforms(self, is_training: bool = False, crop_size: int = 518):
+    def get_transforms(
+        self, is_training: bool = False, crop_size: int = 518
+    ) -> Callable:
         return get_transforms(is_training=is_training, crop_size=crop_size)
 
     def set_transform(

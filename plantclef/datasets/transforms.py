@@ -36,14 +36,15 @@ def get_transforms(is_training: bool = False, crop_size: int = 518) -> Callable:
                     size=(crop_size, crop_size),
                     scale=(0.08, 1.0),
                     ratio=(0.75, 1.33),
-                    interpolation=cv2.INTER_LINEAR,
+                    interpolation=cv2.INTER_AREA,  # cv2.INTER_LINEAR,
                 ),
                 A.HorizontalFlip(),
                 A.VerticalFlip(),
-                # A.Normalize(
-                #     mean=(0.485, 0.456, 0.406),
-                #     std=(0.229, 0.224, 0.225)
-                # )
+                A.Normalize(
+                    mean=(0.485, 0.456, 0.406),
+                    std=(0.229, 0.224, 0.225),
+                    max_pixel_value=255.0,
+                ),
             ]
         )
     else:
@@ -57,17 +58,12 @@ def get_transforms(is_training: bool = False, crop_size: int = 518) -> Callable:
                     std=(0.229, 0.224, 0.225),
                     max_pixel_value=255.0,
                 ),
-                # ToTensorV2(),
             ]
         )
     tx = A.Compose(tranforms_list, additional_targets=None)
 
     def transform_func(image: PIL.Image.Image) -> torch.Tensor:
         image = pil_to_numpy(image)
-        # print("in transform_func")
-        # print(image.dtype)
-        # print(image.shape)
-        # image = image.squeeze()
 
         image = tx(image=image)["image"]
         return to_tensor(image)
