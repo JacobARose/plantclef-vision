@@ -146,32 +146,87 @@ def torch_pipeline(
 
 
 def create_predictions_df(
-    ds: HFPlantDataset, embeddings: torch.Tensor, logits: list
+    ds, logits, group_tiles_by_image_name: bool = False
 ) -> pd.DataFrame:
     """
-    Accepts an HFPlantDataset and a set of embeddings and logits.
+    Create a DataFrame with predictions and save it to a CSV file.
+    """
+    # Create a DataFrame with image names and logits
+    img_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})
 
-    To be called after the model has been run on the full dataset in ds.
+    img_df = img_df.convert_dtypes()
+    pred_df = img_df.assign(logits=logits)
 
-    Returns a DataFrame with the following columns:
-        - image_name
-        - tile
-        - embeddings
-        - logits
-    The DataFrame is exploded to have one row per tile.
+    if group_tiles_by_image_name:
+        pred_df = pred_df.assign(tile=pred_df.groupby("image_name").cumcount())
+
+    return pred_df
+
+
+def create_embeddings_df(
+    ds, embeddings: "torch.Tensor", group_tiles_by_image_name: bool = False
+) -> pd.DataFrame:
+    """
+    Create a DataFrame with embeddings and save it to a CSV file.
 
     """
+    img_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})
 
-    pred_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})
-    # pred_df["image_name"] = pred_df["image_name"].str.rsplit("/", n=1, expand=True)[1]
+    # img_df = img_df.convert_dtypes()
+    embeddings_df = img_df.assign(embeddings=embeddings.cpu().tolist())
+    embeddings_df = embeddings_df.explode(["embeddings"], ignore_index=True)
+    embeddings_df = embeddings_df.assign(
+        emb_idx=embeddings_df.groupby("image_name").cumcount()
+    )
+    embeddings_df = embeddings_df.pivot(
+        index="image_name", columns="emb_idx", values="embeddings"
+    )
+    embeddings_df = embeddings_df.convert_dtypes()
 
-    pred_df = pred_df.convert_dtypes()
+    if group_tiles_by_image_name:
+        embeddings_df = embeddings_df.assign(
+            tile=embeddings_df.groupby("image_name").cumcount()
+        )
 
-    pred_df = pred_df.assign(embeddings=embeddings.cpu().tolist(), logits=logits)
-    explode_df = pred_df.explode(["embeddings", "logits"], ignore_index=True)
-    explode_df = explode_df.assign(tile=explode_df.groupby("image_name").cumcount())
+    return embeddings_df
 
-    return explode_df
+
+# def create_predictions_df(
+#     ds: HFPlantDataset, embeddings: torch.Tensor, logits: list, group_tiles_by_image_name: bool = True
+# ) -> pd.DataFrame:
+#     """
+#     Args:
+#         ds: HFPlantDataset
+#         embeddings: torch.Tensor
+#         logits: list
+#         group_tiles_by_image_name: bool, if True, will group tiles by image name. Only use if each image has been split into tiles, and predictions made individually on each tile.
+#             * [TODO] -- Add logic to automatically determine if there are > 1 prediction per image, indicating the need to have this value be True.
+
+
+#     Accepts an HFPlantDataset and a set of embeddings and logits.
+
+#     To be called after the model has been run on the full dataset in ds.
+
+#     Returns a DataFrame with the following columns:
+#         - image_name
+#         - [tile]
+#         - embeddings
+#         - logits
+#     The DataFrame is exploded to have one row per tile.
+
+#     """
+
+#     pred_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})
+#     # pred_df["image_name"] = pred_df["image_name"].str.rsplit("/", n=1, expand=True)[1]
+
+#     pred_df = pred_df.convert_dtypes()
+
+#     pred_df = pred_df.assign(embeddings=embeddings.cpu().tolist(), logits=logits)
+#     explode_df = pred_df.explode(["embeddings", "logits"], ignore_index=True)
+#     if group_tiles_by_image_name:
+#        explode_df = explode_df.assign(tile=explode_df.groupby("image_name").cumcount())
+
+#     return explode_df
 
 
 @dataclass
@@ -191,18 +246,24 @@ class PipelineConfig(BaseConfig):
     cpu_count: int = os.cpu_count() or 1
     top_k: int = 5
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    head: Optional[int] = None
 
-    embeddings_root_dir: str = (
+    root_dir: str = (
         "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/embeddings"
     )
     subset_embeddings_paths: Dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self, *args, **kwargs):
-        self.dataset_embeddings_dir = f"{self.embeddings_root_dir}/{self.dataset_name}"
+        self.dataset_processed_dir = f"{self.root_dir}/{self.dataset_name}"
         self.subset_embeddings_paths = {
-            subset: f"{self.dataset_embeddings_dir}/{subset}" for subset in self.subsets
+            subset: f"{self.dataset_processed_dir}/{subset}/embeddings"
+            for subset in self.subsets
         }
-        self.config_path = f"{self.dataset_embeddings_dir}/{self.subsets}-config.json"
+        self.subset_predictions_paths = {
+            subset: f"{self.dataset_processed_dir}/{subset}/predictions"
+            for subset in self.subsets
+        }
+        self.config_path = f"{self.dataset_processed_dir}/{self.subsets}-config.json"
 
     @staticmethod
     def parse_args() -> argparse.Namespace:
@@ -252,7 +313,7 @@ class PipelineConfig(BaseConfig):
             help="Device to use for inference",
         )
         parser.add_argument(
-            "--embeddings_root_dir",
+            "--root_dir",
             type=str,
             default="/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/embeddings",
             help="Root directory for saving embeddings + logits",
@@ -261,6 +322,11 @@ class PipelineConfig(BaseConfig):
             "--dry-run",
             action="store_true",
             help="If set, will print config and exit without running the pipeline",
+        )
+        parser.add_argument(
+            "--head",
+            type=int,
+            help="[Optional] -- If set, will only run the pipeline on the first N images in the dataset",
         )
 
         args = parser.parse_args()
@@ -315,10 +381,18 @@ def embed_predict_save(
         ds.set_subset(subset)
         ds.set_transform(crop_size=cfg.image_size)
 
+        if cfg.head:
+            ds.dataset = ds.dataset.take(cfg.head)
+            print(
+                f"[HEAD] Running on the first cfg.head = {cfg.head} images in the dataset"
+            )
+
         subset_embeddings_path = cfg.subset_embeddings_paths[subset]
+        subset_predictions_path = cfg.subset_predictions_paths[subset]
+
         # Create the directory if it doesn't exist
-        print(f"[RUNNING] os.makedirs({subset_embeddings_path}, exist_ok=True)")
-        os.makedirs(subset_embeddings_path, exist_ok=True)
+        # print(f"[RUNNING] os.makedirs({subset_embeddings_path}, exist_ok=True)")
+        # os.makedirs(subset_embeddings_path, exist_ok=True)
 
         print(
             f"Initiating torch_pipeline on dataset subset {subset} of length {len(ds)} using batch_size {cfg.batch_size}"
@@ -336,15 +410,27 @@ def embed_predict_save(
             device=cfg.device,
         )
 
-        pred_df = create_predictions_df(ds, embeddings, logits)
+        pred_df = create_predictions_df(
+            ds, logits=logits, group_tiles_by_image_name=cfg.use_grid
+        )
 
         pred_ds = HFDataset.from_pandas(pred_df)
-        pred_ds.save_to_disk(subset_embeddings_path)
+        pred_ds.save_to_disk(subset_predictions_path)
+        print(f"Predictions saved to {subset_predictions_path}")
+        print_current_time()
+        print_dir_size(subset_predictions_path)
 
+        embed_df = create_embeddings_df(
+            ds, embeddings=embeddings, group_tiles_by_image_name=cfg.use_grid
+        )
+        embed_ds = HFDataset.from_pandas(embed_df)
+        embed_ds.save_to_disk(subset_embeddings_path)
         print(f"Predictions saved to {subset_embeddings_path}")
         print_current_time()
-
         print_dir_size(subset_embeddings_path)
+
+        del logits
+        del embeddings
 
 
 def run_embed_test(args: Optional[argparse.Namespace] = None):
@@ -406,7 +492,7 @@ if __name__ == "__main__":
 #     # dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/competition-metadata/PlantCLEF2025_test_images/PlantCLEF2025_test_images"
 #     # hf_dataset_dir: str = "/teamspace/studios/this_studio/plantclef-vision/data/parquet/plantclef2025/full_test/HF_dataset"
 
-#     # embeddings_root_dir: str = ""
+#     # root_dir: str = ""
 #     # test_embeddings_dir: str = ""
 #     # folder_name: str = ""
 #     # test_embeddings_path: str = ""
@@ -415,8 +501,8 @@ if __name__ == "__main__":
 
 #     def __init__(self, *args, **kwargs):
 #         super().__init__(*args, **kwargs)
-#         self.embeddings_root_dir = f"{self.root_dir}/embeddings"
-#         self.test_embeddings_dir = f"{self.embeddings_root_dir}/full_test"
+#         self.root_dir = f"{self.root_dir}/embeddings"
+#         self.test_embeddings_dir = f"{self.root_dir}/full_test"
 #         self.folder_name = f"test_grid_{self.grid_size}x{self.grid_size}_embeddings"
 #         self.test_embeddings_path = f"{self.test_embeddings_dir}/{self.folder_name}"
 #         self.test_submission_path = (
