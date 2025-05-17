@@ -320,10 +320,7 @@ class PipelineConfig(BaseConfig):
         )
         parser.add_argument(
             "--root_dir",
-            "--root_dir",
-            "--root_dir",
             type=str,
-            default="/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/processed",
             default="/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/processed",
             help="Root directory for saving embeddings + logits",
         )
@@ -384,7 +381,7 @@ def embed_predict_save(
     # ds.transform = ds.get_transforms(cfg.image_size)
 
     print(f"[RUNNING] make_dataset(name={cfg.dataset_name}, load_all_subsets=False)")
-    ds = make_dataset(name="plantclef2024", load_all_subsets=False)
+    ds = make_dataset(name="plantclef2024", load_all_subsets=False, subset="val")
 
     for subset in cfg.subsets:
         ds.set_subset(subset)
@@ -395,7 +392,6 @@ def embed_predict_save(
             print(
                 f"[HEAD] Running on the first cfg.head = {cfg.head} images in the dataset"
             )
-
 
         subset_embeddings_path = cfg.subset_embeddings_paths[subset]
         subset_predictions_path = cfg.subset_predictions_paths[subset]
