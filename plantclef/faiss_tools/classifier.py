@@ -1,12 +1,12 @@
 import torch
 import faiss
-import numpy as np
 import pandas as pd
+import polars as pl
 from plantclef.config import get_device
 
 
 class FaissClassifier:
-    def __init__(self, train_df: pd.DataFrame):
+    def __init__(self, train_df: pd.DataFrame | pl.DataFrame):
         """
         :param train_df: DataFrame with columns ["species_id", "embeddings"]
         """
@@ -17,13 +17,19 @@ class FaissClassifier:
         """Builds the FAISS index from the training data."""
 
         # store class labels
-        idx2cls = train_df["image_name"].values
+        # idx2cls = train_df["image_name"].values
+        # # convert embeddings to tensor
+        # embs_array = np.array(train_df["embeddings"].tolist(), dtype=np.float32)
+        # embs = torch.tensor(embs_array, device=self.device)
+        # # normalize embeddings for cosine similarity
+        # embs = torch.nn.functional.normalize(embs, p=2, dim=1)
 
-        # convert embeddings to tensor
-        embs_array = np.array(train_df["embeddings"].tolist(), dtype=np.float32)
-        embs = torch.tensor(embs_array, device=self.device)
+        idx2cls = train_df["image_name"].to_numpy()
 
-        # normalize embeddings for cosine similarity
+        embed_array = (
+            train_df.drop("image_name", "partition").cast(pl.Float32).to_numpy()
+        )
+        embs = torch.tensor(embed_array)
         embs = torch.nn.functional.normalize(embs, p=2, dim=1)
 
         # create FAISS index
