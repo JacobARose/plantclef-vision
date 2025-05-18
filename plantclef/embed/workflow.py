@@ -10,6 +10,9 @@ If you run this script, it will create embeddings and logits for the full unlabe
 python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 256
 
 
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "test" --batch_size 512 --image_size 308 --tail 15360
+
+
 """
 
 import argparse
@@ -407,15 +410,23 @@ def embed_predict_save(
         ds.set_subset(subset)
         ds.set_transform(crop_size=cfg.image_size)
 
+        num_samples = len(ds)
+
         if cfg.head:
             ds.dataset = ds.dataset.take(cfg.head)  # type: ignore
             print(
-                f"[HEAD] Running on the first cfg.head = {cfg.head} images in the dataset"
+                f"[HEAD] Running on the first cfg.head = {cfg.head} images in the dataset",
+                f"Dataset is now len(ds) = {len(ds)}",
             )
         if cfg.tail:
-            ds.dataset = ds.dataset[-cfg.tail :]  # type: ignore
+            ds.dataset = ds.dataset.add_column("idx", list(range(num_samples)))  # type: ignore
+            ds.dataset = ds.dataset.select(
+                list(range((num_samples - cfg.tail), num_samples))
+            )  # type: ignore
+            # ds.dataset = ds.dataset[-cfg.tail :]  # type: ignore
             print(
-                f"[TAIL] Running on the last cfg.tail = {cfg.tail} images in the dataset"
+                f"[TAIL] Running on the last cfg.tail = {cfg.tail} images in the dataset",
+                f"Dataset is now len(ds) = {len(ds)}",
             )
 
         subset_embeddings_path = cfg.subset_embeddings_paths[subset]
