@@ -191,7 +191,7 @@ def create_predictions_df(
     Create a DataFrame with predictions and save it to a CSV file.
     """
     # Create a DataFrame with image names and logits
-    img_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})
+    img_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})  # type: ignore
 
     img_df = img_df.convert_dtypes()
     pred_df = img_df.assign(logits=logits)
@@ -388,7 +388,7 @@ def embed_predict_save(
         ds.set_transform(crop_size=cfg.image_size)
 
         if cfg.head:
-            ds.dataset = ds.dataset.take(cfg.head)
+            ds.dataset = ds.dataset.take(cfg.head)  # type: ignore
             print(
                 f"[HEAD] Running on the first cfg.head = {cfg.head} images in the dataset"
             )
@@ -413,25 +413,37 @@ def embed_predict_save(
             device=cfg.device,
         )
 
-        pred_df = create_predictions_df(
-            ds, logits=logits, group_tiles_by_image_name=cfg.use_grid
-        )
-        save_df_to_parquet(
-            pred_df, path=subset_predictions_path, max_rows_per_partition=10000
-        )
-        print(f"Predictions saved to {subset_predictions_path}")
-        print_current_time()
-        print_dir_size(subset_predictions_path)
+        try:
+            pred_df = create_predictions_df(
+                ds, logits=logits, group_tiles_by_image_name=cfg.use_grid
+            )
+            save_df_to_parquet(
+                pred_df, path=subset_predictions_path, max_rows_per_partition=10000
+            )
+            print(f"Predictions saved to {subset_predictions_path}")
+            print_current_time()
+            print_dir_size(subset_predictions_path)
+        except Exception as e:
+            print(f"Error during processing and saving of predictions: {e}")
+            import ipdb
 
-        embed_df = create_embeddings_df(
-            ds, embeddings=embeddings, group_tiles_by_image_name=cfg.use_grid
-        )
-        save_df_to_parquet(
-            embed_df, path=subset_embeddings_path, max_rows_per_partition=10000
-        )
-        print(f"Predictions saved to {subset_embeddings_path}")
-        print_current_time()
-        print_dir_size(subset_embeddings_path)
+            ipdb.set_trace()
+
+        try:
+            embed_df = create_embeddings_df(
+                ds, embeddings=embeddings, group_tiles_by_image_name=cfg.use_grid
+            )
+            save_df_to_parquet(
+                embed_df, path=subset_embeddings_path, max_rows_per_partition=10000
+            )
+            print(f"Predictions saved to {subset_embeddings_path}")
+            print_current_time()
+            print_dir_size(subset_embeddings_path)
+        except Exception as e:
+            print(f"Error during processing and saving of embeddings: {e}")
+            import ipdb
+
+            ipdb.set_trace()
 
         del logits
         del embeddings

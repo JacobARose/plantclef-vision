@@ -18,14 +18,18 @@ class FaissClassifier:
 
         # store class labels
         idx2cls = train_df["image_name"].values
+
         # convert embeddings to tensor
         embs_array = np.array(train_df["embeddings"].tolist(), dtype=np.float32)
         embs = torch.tensor(embs_array, device=self.device)
+
         # normalize embeddings for cosine similarity
         embs = torch.nn.functional.normalize(embs, p=2, dim=1)
+
         # create FAISS index
         index = faiss.IndexFlatIP(embs.shape[1])  # inner product (dot product)
-        index.add(embs.cpu().numpy())  # FAISS expects numpy arrays
+        index.add(embs.cpu().numpy())  # FAISS expects numpy arrays # type: ignore
+
         return index, idx2cls
 
     def make_prediction(self, query_embeddings: torch.Tensor, k=1):
