@@ -14,7 +14,7 @@ python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.
 
 
 
-python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 256
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 128 --pin_memory --non_blocking --prefetch_factor 4
 
 """
 
@@ -68,6 +68,8 @@ def torch_pipeline(
 
     # set device to GPU if available, otherwise CPU
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    pin_memory = pin_memory if device == "cuda" else False
+
     model.to(device)
 
     # create DataLoader
@@ -450,7 +452,7 @@ def embed_predict_save(
             )
         if cfg.tail:
             ds.dataset = ds.dataset.add_column("idx", list(range(num_samples)))  # type: ignore
-            ds.dataset = ds.dataset.select(
+            ds.dataset = ds.dataset.select(  # type: ignore
                 list(range((num_samples - cfg.tail), num_samples))
             )  # type: ignore
             # ds.dataset = ds.dataset[-cfg.tail :]  # type: ignore
@@ -477,6 +479,9 @@ def embed_predict_save(
                 cpu_count=cfg.cpu_count,
                 top_k=cfg.top_k,
                 device=cfg.device,
+                pin_memory=cfg.pin_memory,
+                non_blocking=cfg.non_blocking,
+                prefetch_factor=cfg.prefetch_factor,
             )
         except Exception as e:
             print(f"Error during torch_pipeline: {e}")
