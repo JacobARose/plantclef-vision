@@ -80,20 +80,39 @@ class DINOv2LightningModel(pl.LightningModule):
             the list is length of either B or B * grid_size**2
             each dict has k key:value pairs, 1 for each of the top-k logits
         """
-        embeddings, logits = self(batch)
-        probabilities = torch.softmax(logits, dim=1)
-        top_probs, top_indices = torch.topk(probabilities, k=self.top_k, dim=1)
+        try:
+            embeddings, logits = self(batch)
+        except Exception as e:
+            import pdb
 
-        # map class indices to species names
-        batch_logits = []
-        for i in range(len(logits)):
-            species_probs = {
-                self.cid_to_spid.get(int(top_indices[i, j].item()), "Unknown"): float(
-                    top_probs[i, j].item()
-                )
-                for j in range(self.top_k)
-            }
-            batch_logits.append(species_probs)
+            pdb.set_trace()
+            print(f"Error during forward pass: {e}")
+
+        try:
+            probabilities = torch.softmax(logits, dim=1)
+            top_probs, top_indices = torch.topk(probabilities, k=self.top_k, dim=1)
+        except Exception as e:
+            import pdb
+
+            pdb.set_trace()
+            print(f"Error during softmax/topk: {e}")
+
+        try:
+            # map class indices to species names
+            batch_logits = []
+            for i in range(len(logits)):
+                species_probs = {
+                    self.cid_to_spid.get(
+                        int(top_indices[i, j].item()), "Unknown"
+                    ): float(top_probs[i, j].item())
+                    for j in range(self.top_k)
+                }
+                batch_logits.append(species_probs)
+        except Exception as e:
+            import pdb
+
+            pdb.set_trace()
+            print(f"Error during mapping class indices: {e}")
 
         return embeddings, batch_logits
 

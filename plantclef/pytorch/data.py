@@ -132,6 +132,8 @@ class BasePlantDataset(ABC, PyTorchDataset):
             img_list = self._split_into_grid(img)
             img = torch.stack(img_list)
 
+        # print(f"Image idx={idx} shape: {img.shape}") # type: ignore
+
         return {"image": img, "label_idx": label, self.id_col: sample_id}
 
     @abstractmethod
@@ -437,7 +439,8 @@ class HFPlantDataset(BasePlantDataset):
                 row = self._get_row(idx)
         with torch.profiler.record_function("row[self.x_col]"):
             pil_img = row[self.x_col]
-        return pil_img
+
+        return pil_img.convert("RGB")  # Ensure image is in RGB format
 
     def _get_label_tensor(
         self, idx: Optional[int] = None, row: Optional[dict] = None

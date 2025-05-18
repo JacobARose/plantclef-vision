@@ -82,6 +82,7 @@ def torch_pipeline(
     # run inference and collect embeddings with tqdm progress bar
     all_embeddings = []
     all_logits = []
+    i = 0
     try:
         for batch in tqdm(
             dataloader, desc="Extracting embeddings and logits", unit="batch"
@@ -90,23 +91,25 @@ def torch_pipeline(
                 if isinstance(batch, dict):
                     batch = batch[x_col]
                 embeddings, logits = predict_step(batch, batch_idx=0)
-                all_embeddings.append(embeddings.cpu())
+                embeddings = embeddings.cpu()
+                all_embeddings.append(embeddings)
                 # Each image in the batch gets a list of grid_size**2 dicts, each containing the top-k logits for that grid tile
                 all_logits.extend(logits)
+                i += 1
             except Exception as e:
-                print(f"Error during batch processing: {e}")
                 import ipdb
 
                 ipdb.set_trace()
+                print(f"Error during batch processing: {e}")
 
         embeddings = torch.cat(
             all_embeddings, dim=0
         )  # shape: [len(df), grid_size**2, 768]
     except Exception as e:
-        print(f"Error during inference: {e}")
         import ipdb
 
         ipdb.set_trace()
+        print(f"Error during inference: {e}")
 
     return embeddings, all_logits
 
