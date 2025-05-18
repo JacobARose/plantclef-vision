@@ -14,11 +14,13 @@ class DINOv2LightningModel(pl.LightningModule):
         model_path: str = setup_fine_tuned_model(),
         model_name: str = "vit_base_patch14_reg4_dinov2.lvd142m",
         top_k: int = 10,
+        non_blocking: bool = False,
     ):
         super().__init__()
         self.model_device = get_device()
         self.num_classes = 7806  # total plant species
         self.top_k = top_k
+        self.non_blocking = non_blocking if self.model_device == "cuda" else False
 
         # load the fine-tuned model
         self.model = timm.create_model(
@@ -51,7 +53,9 @@ class DINOv2LightningModel(pl.LightningModule):
     def forward(self, batch):
         """Extract embeddings using the [CLS] token."""
         with torch.no_grad():
-            batch = batch.to(self.model_device)  # move to device
+            batch = batch.to(
+                self.model_device, non_blocking=self.non_blocking
+            )  # move to device
 
             if batch.dim() == 5:  # (B, grid_size**2, C, H, W)
                 B, G, C, H, W = batch.shape

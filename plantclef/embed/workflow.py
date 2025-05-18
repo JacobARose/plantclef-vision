@@ -13,6 +13,9 @@ python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.
 python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "test" --batch_size 512 --image_size 308 --tail 15360
 
 
+
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 256
+
 """
 
 import argparse
@@ -45,6 +48,9 @@ def torch_pipeline(
     cpu_count: int = 1,
     top_k: int = 5,
     device: Optional[str] = None,
+    pin_memory: bool = False,
+    non_blocking: bool = False,
+    prefetch_factor: int = 2,
 ):
     """
     Pipeline to extract embeddings and top-K logits using PyTorch Lightning.
@@ -58,7 +64,7 @@ def torch_pipeline(
     """
 
     # initialize model
-    model = model or DINOv2LightningModel(top_k=top_k)
+    model = model or DINOv2LightningModel(top_k=top_k, non_blocking=non_blocking)
 
     # set device to GPU if available, otherwise CPU
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -70,7 +76,8 @@ def torch_pipeline(
         batch_size=batch_size,
         shuffle=False,
         num_workers=cpu_count,
-        pin_memory=True,
+        pin_memory=pin_memory,
+        prefetch_factor=prefetch_factor,
         # collate_fn=custom_collate_fn_partial(use_grid),
     )
     x_col = dataset.x_col
@@ -273,6 +280,10 @@ class PipelineConfig(BaseConfig):
     head: Optional[int] = None
     tail: Optional[int] = None
 
+    pin_memory: bool = False
+    non_blocking: bool = False
+    prefetch_factor: int = 2
+
     root_dir: str = (
         "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/processed"
     )
@@ -357,6 +368,22 @@ class PipelineConfig(BaseConfig):
             "--tail",
             type=int,
             help="[Optional] -- If set, will only run the pipeline on the last N images in the dataset",
+        )
+        parser.add_argument(
+            "--pin_memory",
+            action="store_true",
+            help="Enable pin_memory for DataLoader",
+        )
+        parser.add_argument(
+            "--non_blocking",
+            action="store_true",
+            help="Enable non_blocking for DataLoader",
+        )
+        parser.add_argument(
+            "--prefetch_factor",
+            type=int,
+            default=2,
+            help="Number of batches to prefetch for DataLoader",
         )
 
         args = parser.parse_args()
