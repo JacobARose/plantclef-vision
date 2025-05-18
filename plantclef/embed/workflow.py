@@ -79,17 +79,31 @@ def torch_pipeline(
     # run inference and collect embeddings with tqdm progress bar
     all_embeddings = []
     all_logits = []
-    for batch in tqdm(
-        dataloader, desc="Extracting embeddings and logits", unit="batch"
-    ):
-        if isinstance(batch, dict):
-            batch = batch[x_col]
-        embeddings, logits = predict_step(batch, batch_idx=0)
-        all_embeddings.append(embeddings.cpu())
-        # Each image in the batch gets a list of grid_size**2 dicts, each containing the top-k logits for that grid tile
-        all_logits.extend(logits)
+    try:
+        for batch in tqdm(
+            dataloader, desc="Extracting embeddings and logits", unit="batch"
+        ):
+            try:
+                if isinstance(batch, dict):
+                    batch = batch[x_col]
+                embeddings, logits = predict_step(batch, batch_idx=0)
+                all_embeddings.append(embeddings.cpu())
+                # Each image in the batch gets a list of grid_size**2 dicts, each containing the top-k logits for that grid tile
+                all_logits.extend(logits)
+            except Exception as e:
+                print(f"Error during batch processing: {e}")
+                import ipdb
 
-    embeddings = torch.cat(all_embeddings, dim=0)  # shape: [len(df), grid_size**2, 768]
+                ipdb.set_trace()
+
+        embeddings = torch.cat(
+            all_embeddings, dim=0
+        )  # shape: [len(df), grid_size**2, 768]
+    except Exception as e:
+        print(f"Error during inference: {e}")
+        import ipdb
+
+        ipdb.set_trace()
 
     return embeddings, all_logits
 
@@ -251,6 +265,7 @@ class PipelineConfig(BaseConfig):
     top_k: int = 5
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     head: Optional[int] = None
+    tail: Optional[int] = None
 
     root_dir: str = (
         "/teamspace/studios/this_studio/plantclef-vision/data/plantclef2025/processed"
@@ -332,6 +347,11 @@ class PipelineConfig(BaseConfig):
             type=int,
             help="[Optional] -- If set, will only run the pipeline on the first N images in the dataset",
         )
+        parser.add_argument(
+            "--tail",
+            type=int,
+            help="[Optional] -- If set, will only run the pipeline on the last N images in the dataset",
+        )
 
         args = parser.parse_args()
 
@@ -392,26 +412,36 @@ def embed_predict_save(
             print(
                 f"[HEAD] Running on the first cfg.head = {cfg.head} images in the dataset"
             )
+        if cfg.tail:
+            ds.dataset = ds.dataset[-cfg.tail :]  # type: ignore
+            print(
+                f"[TAIL] Running on the last cfg.tail = {cfg.tail} images in the dataset"
+            )
 
         subset_embeddings_path = cfg.subset_embeddings_paths[subset]
         subset_predictions_path = cfg.subset_predictions_paths[subset]
 
         print(
-            f"Initiating torch_pipeline on dataset subset {subset} of length {len(ds)} using batch_size {cfg.batch_size}"
+            f"Initiating torch_pipeline on dataset subset {subset} of <<length {len(ds)}>> using <<batch_size {cfg.batch_size}>>"
         )
 
         print_current_time()
+        try:
+            embeddings, logits = torch_pipeline(
+                dataset=ds,
+                model=model,
+                batch_size=cfg.batch_size,
+                use_grid=cfg.use_grid,
+                grid_size=cfg.grid_size,
+                cpu_count=cfg.cpu_count,
+                top_k=cfg.top_k,
+                device=cfg.device,
+            )
+        except Exception as e:
+            print(f"Error during torch_pipeline: {e}")
+            import ipdb
 
-        embeddings, logits = torch_pipeline(
-            dataset=ds,
-            model=model,
-            batch_size=cfg.batch_size,
-            use_grid=cfg.use_grid,
-            grid_size=cfg.grid_size,
-            cpu_count=cfg.cpu_count,
-            top_k=cfg.top_k,
-            device=cfg.device,
-        )
+            ipdb.set_trace()
 
         try:
             pred_df = create_predictions_df(

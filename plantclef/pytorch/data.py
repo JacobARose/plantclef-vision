@@ -40,9 +40,6 @@ def custom_collate_fn_partial(use_grid: bool, key: Optional[str] = None):
     """Returns a pickle-friendly collate function with the `use_grid` flag."""
 
     def collate_fn(batch) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
-        # from IPython.core.debugger import set_trace
-        # set_trace()  # Uncomment this line to enable debugging
-        # import pdb; pdb.set_trace()
         if key is None:
             return custom_collate_fn(batch, use_grid)
         else:
