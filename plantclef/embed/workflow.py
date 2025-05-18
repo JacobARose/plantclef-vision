@@ -7,6 +7,8 @@ Created by: Jacob A Rose
 If you run this script, it will create embeddings and logits for the full unlabeled quadrat test set using a 3x3 tile grid input to the DINOv2 model and save them to disk.
 
 
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 128
+
 
 """
 
@@ -145,6 +147,33 @@ def torch_pipeline(
 #     return embeddings, all_logits
 
 
+def format_predictions_df(df):
+    """
+    Format the predictions DataFrame by expanding the top-k predictions and logits into separate columns.
+
+    This is necessary for going
+        from a single "logits" column, containing a dictionary of {prediction : logit} pairs
+        to k*2 columns, \forall k in [0, 1, ..., i, ..., k-2, k-1], there's a f"pred_{i}" and a f"logit_{i}" column
+    """
+
+    def expand_logits_fn(row):
+        logits = row["logits"]
+        logits = [(k, v) for k, v in logits.items() if v is not None]
+        logits = sorted(logits, key=lambda x: x[1], reverse=True)
+        new_cols = {}  # "image_name": row.index}
+        for i, (k, v) in enumerate(logits):
+            new_cols[f"pred_{i}"] = k
+            new_cols[f"logit_{i}"] = v
+        return pd.Series(new_cols)
+
+    df = df.set_index("image_name")
+    df = df.apply(expand_logits_fn, result_type="expand", axis=1).reset_index()
+
+    df = df.convert_dtypes()
+
+    return df
+
+
 def create_predictions_df(
     ds: HFPlantDataset, logits: list, group_tiles_by_image_name: bool = False
 ) -> pd.DataFrame:
@@ -165,6 +194,8 @@ def create_predictions_df(
 
     img_df = img_df.convert_dtypes()
     pred_df = img_df.assign(logits=logits)
+
+    pred_df = format_predictions_df(pred_df)
 
     if group_tiles_by_image_name:
         pred_df = pred_df.assign(tile=pred_df.groupby("image_name").cumcount())
