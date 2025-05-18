@@ -14,7 +14,18 @@ python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.
 
 
 
-python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 128 --pin_memory --non_blocking --prefetch_factor 4
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 512 --pin_memory --non_blocking --prefetch_factor 4
+
+
+
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 512 --non_blocking --prefetch_factor 2 --image_size 308
+
+
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 512 --pin_memory --prefetch_factor 2 --image_size 308
+
+
+
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 256 --non_blocking --prefetch_factor 4 --image_size 308
 
 """
 
