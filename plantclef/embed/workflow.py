@@ -7,7 +7,7 @@ Created by: Jacob A Rose
 If you run this script, it will create embeddings and logits for the full unlabeled quadrat test set using a 3x3 tile grid input to the DINOv2 model and save them to disk.
 
 
-python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 128
+python /teamspace/studios/this_studio/plantclef-vision/plantclef/embed/workflow.py --subsets "val" --batch_size 256
 
 
 """
@@ -222,6 +222,7 @@ def create_embeddings_df(
     embeddings_df = embeddings_df.pivot(
         index="image_name", columns="emb_idx", values="embeddings"
     )
+    embeddings_df = embeddings_df.reset_index()
     embeddings_df = embeddings_df.convert_dtypes()
 
     if group_tiles_by_image_name:
@@ -230,41 +231,6 @@ def create_embeddings_df(
         )
 
     return embeddings_df
-
-
-# def create_predictions_df(
-#     ds: HFPlantDataset, embeddings: torch.Tensor, logits: list, group_tiles_by_image_name: bool = True
-# ) -> pd.DataFrame:
-#     """
-#     Args:
-#         ds: HFPlantDataset
-#         embeddings: torch.Tensor
-#         logits: list
-#         group_tiles_by_image_name: bool, if True, will group tiles by image name. Only use if each image has been split into tiles, and predictions made individually on each tile.
-#             * [TODO] -- Add logic to automatically determine if there are > 1 prediction per image, indicating the need to have this value be True.
-
-
-#     Accepts an HFPlantDataset and a set of embeddings and logits.
-
-#     To be called after the model has been run on the full dataset in ds.
-
-#     Returns a DataFrame with the following columns:
-#         - image_name
-#         - [tile]
-#         - embeddings
-#         - logits
-#     The DataFrame is exploded to have one row per tile.
-#     """
-
-#     pred_df = pd.DataFrame({"image_name": ds.dataset["image_name"]})
-#     # pred_df["image_name"] = pred_df["image_name"].str.rsplit("/", n=1, expand=True)[1]
-#     pred_df = pred_df.convert_dtypes()
-#     pred_df = pred_df.assign(embeddings=embeddings.cpu().tolist(), logits=logits)
-#     explode_df = pred_df.explode(["embeddings", "logits"], ignore_index=True)
-#     if group_tiles_by_image_name:
-#        explode_df = explode_df.assign(tile=explode_df.groupby("image_name").cumcount())
-
-#     return explode_df
 
 
 @dataclass
@@ -294,11 +260,11 @@ class PipelineConfig(BaseConfig):
     def __post_init__(self, *args, **kwargs):
         self.dataset_processed_dir = f"{self.root_dir}/{self.dataset_name}"
         self.subset_embeddings_paths = {
-            subset: f"{self.dataset_processed_dir}/{subset}/embeddings"
+            subset: f"{self.dataset_processed_dir}/{subset}/embeddings.parquet"
             for subset in self.subsets
         }
         self.subset_predictions_paths = {
-            subset: f"{self.dataset_processed_dir}/{subset}/predictions"
+            subset: f"{self.dataset_processed_dir}/{subset}/predictions.parquet"
             for subset in self.subsets
         }
         self.config_path = f"{self.dataset_processed_dir}/{self.subsets}-config.json"

@@ -60,7 +60,9 @@ def save_df_to_parquet(
         path (str): The path where the parquet file will be saved.
         max_rows_per_partition (int): The maximum number of rows per partition.
     """
+    if not path.endswith(".parquet"):
+        path += ".parquet"
     df = create_partition_column(df, max_rows_per_partition=max_rows_per_partition)  # type: ignore
     df: pl.DataFrame = pl.from_pandas(df)  # type: ignore
-    df.write_parquet(f"{path}.parquet", partition_by="partition")
-    return f"{path}.parquet"
+    df.write_parquet(path, partition_by="partition")
+    return path
