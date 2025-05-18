@@ -35,6 +35,7 @@ import wandb
 
 def torch_pipeline(
     dataset: HFPlantDataset,
+    model: Optional[DINOv2LightningModel] = None,
     batch_size: int = 32,
     use_grid: bool = False,
     grid_size: int = 1,
@@ -54,7 +55,7 @@ def torch_pipeline(
     """
 
     # initialize model
-    model = DINOv2LightningModel(top_k=top_k)
+    model = model or DINOv2LightningModel(top_k=top_k)
 
     # set device to GPU if available, otherwise CPU
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -414,6 +415,8 @@ def embed_predict_save(
     print(f"[RUNNING] make_dataset(name={cfg.dataset_name}, load_all_subsets=False)")
     ds = make_dataset(name="plantclef2024", load_all_subsets=False, subset="val")
 
+    model = DINOv2LightningModel(top_k=cfg.top_k)
+
     for subset in cfg.subsets:
         ds.set_subset(subset)
         ds.set_transform(crop_size=cfg.image_size)
@@ -439,6 +442,7 @@ def embed_predict_save(
 
         embeddings, logits = torch_pipeline(
             dataset=ds,
+            model=model,
             batch_size=cfg.batch_size,
             use_grid=cfg.use_grid,
             grid_size=cfg.grid_size,
