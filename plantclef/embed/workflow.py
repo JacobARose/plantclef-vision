@@ -19,9 +19,9 @@ import torch
 import os
 import pandas as pd
 from plantclef.pytorch.data import (
-    HFDataset,
     HFPlantDataset,
 )
+from plantclef.utils.df_utils import save_df_to_parquet
 from plantclef.pytorch.data_catalog import make_dataset
 from plantclef.pytorch.model import DINOv2LightningModel
 from plantclef.embed.utils import print_current_time, print_dir_size
@@ -430,10 +430,6 @@ def embed_predict_save(
         subset_embeddings_path = cfg.subset_embeddings_paths[subset]
         subset_predictions_path = cfg.subset_predictions_paths[subset]
 
-        # Create the directory if it doesn't exist
-        # print(f"[RUNNING] os.makedirs({subset_embeddings_path}, exist_ok=True)")
-        # os.makedirs(subset_embeddings_path, exist_ok=True)
-
         print(
             f"Initiating torch_pipeline on dataset subset {subset} of length {len(ds)} using batch_size {cfg.batch_size}"
         )
@@ -454,8 +450,9 @@ def embed_predict_save(
         pred_df = create_predictions_df(
             ds, logits=logits, group_tiles_by_image_name=cfg.use_grid
         )
-        pred_ds = HFDataset.from_pandas(pred_df)
-        pred_ds.save_to_disk(subset_predictions_path)
+        save_df_to_parquet(
+            pred_df, path=subset_predictions_path, max_rows_per_partition=10000
+        )
         print(f"Predictions saved to {subset_predictions_path}")
         print_current_time()
         print_dir_size(subset_predictions_path)
@@ -463,8 +460,9 @@ def embed_predict_save(
         embed_df = create_embeddings_df(
             ds, embeddings=embeddings, group_tiles_by_image_name=cfg.use_grid
         )
-        embed_ds = HFDataset.from_pandas(embed_df)
-        embed_ds.save_to_disk(subset_embeddings_path)
+        save_df_to_parquet(
+            embed_df, path=subset_embeddings_path, max_rows_per_partition=10000
+        )
         print(f"Predictions saved to {subset_embeddings_path}")
         print_current_time()
         print_dir_size(subset_embeddings_path)
