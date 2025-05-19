@@ -678,8 +678,6 @@ def plot_faiss_classifications(
             axes[i][j + 1].set_xticks([])
             axes[i][j + 1].set_yticks([])
             axes[i][j + 1].axis("off")
-        if i > 3:
-            break
     plt.tight_layout()
     plt.subplots_adjust(top=0.95, left=0.02, right=0.98, hspace=0.25, wspace=0.05)
     plt.suptitle(
