@@ -503,7 +503,7 @@ class ImageQueryResult(ImageResult):
 class ImageTileQueryResult(ImageQueryResult):
     """Represents a complete prediction result for a single tile of a query image."""
 
-    tile: int
+    tile: int = 0
     tile_image: Optional[PIL.Image.Image] = None
 
     @property
@@ -528,6 +528,7 @@ def plot_faiss_classifications(
 
     :param embs_df: DataFrame containing training image embeddings and data.
     :param faiss_df: DataFrame containing FAISS predictions and similarities.
+    :param idx: Index of the image to display.
     :param grid_size: Number of tiles per row/column (grid_size x grid_size).
     :param figsize: Figure size (width, height).
     :param dpi: Dots per inch (image resolution).
