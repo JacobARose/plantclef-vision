@@ -7,6 +7,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import random
 from typing import List, Tuple, Optional
 from PIL import Image
 import PIL.Image
@@ -459,6 +460,80 @@ def read_and_crop_image(image_path: str) -> np.ndarray:
 ###################
 
 
+def auto_wrap_title(text, ax, max_width=None):
+    """
+    Automatically wrap a title to prevent overlap in subplot grids.
+
+    * [TODO] -- Add option to increase vertical space between subplots if any titles require n>=3 lines.
+
+    Parameters:
+    -----------
+    text : str
+        The title text to wrap
+    ax : matplotlib.axes.Axes
+        The subplot axes
+    max_width : float, optional
+        Maximum width in display space units. If None, uses 90% of subplot width.
+    """
+    # Get the figure and renderer
+    fig = ax.figure
+    renderer = fig.canvas.get_renderer()
+
+    # Calculate available width if not specified
+    if max_width is None:
+        # Get subplot width in display space units
+        bb = ax.get_window_extent(renderer=renderer)
+        max_width = bb.width * 1.1  # 0.95  # Use 90% of subplot width
+
+    # Split text into words
+    words = text.split()
+    lines = []
+    current_line = []
+    current_width = 0
+
+    # Calculate width of a single character for estimation
+    char_width = renderer.points_to_pixels(10)  # Approximate width of one character
+
+    # print(f"Max width: {max_width}")
+    # print(f"Char width: {char_width}")
+    # print(f"Max # of chars: {max_width / char_width}")
+
+    for word in words:
+        # Estimate width of current line plus new word
+        word_width = len(word) * char_width
+        if current_line:
+            word_width += char_width  # Add space width
+
+        if current_width + word_width > max_width:
+            # Start new line
+            lines.append(" ".join(current_line))
+            current_line = [word]
+            current_width = word_width
+        else:
+            # Continue current line
+            current_line.append(word)
+            current_width += word_width
+
+    if current_line:
+        lines.append(" ".join(current_line))
+
+    return "\n".join(lines)
+
+
+def adjust_titles(fig):
+    """
+    Adjust all subplot titles in the figure to prevent overlap.
+    """
+    for ax in fig.get_axes():
+        title = ax.get_title()
+        if title:
+            wrapped_title = auto_wrap_title(title, ax)
+            ax.set_title(wrapped_title, pad=5)
+
+
+###################
+
+
 @dataclass
 class ImageResult:
     def get_image_data(self, image_path: str) -> np.ndarray:
@@ -520,7 +595,7 @@ class ImageTileQueryResult(ImageQueryResult):
 def plot_faiss_classifications(
     embs_df: pd.DataFrame,
     faiss_df: pd.DataFrame,
-    idx: int = 0,
+    idx: Optional[int] = None,
     path_col: str = "image_path",
     grid_size: int = 3,
     figsize: tuple = (20, 30),
@@ -533,14 +608,22 @@ def plot_faiss_classifications(
 
     :param embs_df: DataFrame containing training image embeddings and data.
     :param faiss_df: DataFrame containing FAISS predictions and similarities.
-    :param idx: Index of the image to display.
+    :param idx: Index of the image to display. If None, a random image will be selected.
     :param grid_size: Number of tiles per row/column (grid_size x grid_size).
     :param figsize: Figure size (width, height).
     :param dpi: Dots per inch (image resolution).
     """
     num_tiles = grid_size**2
 
-    subset_df = faiss_df.iloc[idx, :]
+    all_image_names = faiss_df["image_name"].unique().tolist()
+    if idx is None:
+        image_name_query = random.sample(all_image_names, 1)
+    else:
+        image_name_query = [all_image_names[idx]]
+
+    subset_df = faiss_df[faiss_df["image_name"].isin(image_name_query)]
+
+    subset_df = subset_df.iloc[0, :]
     image_path = subset_df[path_col]
     image_name = subset_df["image_name"]
 
@@ -582,29 +665,29 @@ def plot_faiss_classifications(
     for i, tile in enumerate(results):
         # Left: Original tile
         axes[i][0].imshow(tile.tile_data)
-        axes[i][0].set_title(f"Tile {i+1}", fontsize=15)
+        axes[i][0].set_title(f"Tile {i+1}", fontsize=16, fontweight="bold")
         axes[i][0].set_xticks([])
         axes[i][0].set_yticks([])
         axes[i][0].spines[:].set_visible(False)
 
         # Right: FAISS retrieved images
-        # for j, (faiss_img, species_id) in enumerate(zip(matches, species)):
         for j, img_query_result in enumerate(tile.predicted_images):
             axes[i][j + 1].imshow(img_query_result.image_data)
-            axes[i][j + 1].set_title(
-                f"Top-{j+1}, SpeciesID: {img_query_result.species_id}\nSpecies: {img_query_result.species}",
-                fontsize=12,
-            )
+
+            axes[i][j + 1].set_title(img_query_result.species, fontsize=9)
             axes[i][j + 1].set_xticks([])
             axes[i][j + 1].set_yticks([])
             axes[i][j + 1].axis("off")
-
+        if i > 3:
+            break
     plt.tight_layout()
-    plt.subplots_adjust(top=0.85)
+    plt.subplots_adjust(top=0.95, left=0.02, right=0.98, hspace=0.25, wspace=0.05)
     plt.suptitle(
         f"FAISS Classifications for {image_name}",
         fontsize=20,
         fontweight="bold",
-        y=1.02,
+        y=0.98,
     )
+    adjust_titles(fig)
+
     plt.show()
