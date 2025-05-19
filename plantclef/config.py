@@ -150,15 +150,19 @@ def create_submission_csv(
         unique_sorted_ids = list(dict.fromkeys(sorted_ids))
         # format as double-bracketed string
         species_ids_str = f"[{', '.join(str(sid) for sid in unique_sorted_ids)}]"
-        records.append({"quadrat_id": image_name, "species_ids": species_ids_str})
+        quadrat_id = os.path.splitext(image_name)[0]
+        records.append({"quadrat_id": quadrat_id, "species_ids": species_ids_str})
 
     # build final DataFrame and write to CSV
     df_run = pd.DataFrame(records)
 
     if limit_top_k is not None:
-        df_run = df_run.apply(
-            lambda x: parse_integer_list(x["species_ids"])[:limit_top_k], axis=1
+        df_run = df_run.assign(
+            species_ids=df_run.apply(
+                lambda x: parse_integer_list(x["species_ids"])[:limit_top_k], axis=1
+            )
         )
+    # df_run = df_run.reset_index()
 
     if save_csv:
         output_dir = os.path.dirname(output_path)
