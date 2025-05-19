@@ -106,11 +106,26 @@ def get_class_mappings_file() -> str:
     return f"{base_dir}/plantclef/class_mapping.txt"
 
 
+def parse_integer_list(string):
+    """
+    Parses a string containing a list of integers and returns the list of integers.
+
+    :param string: A string in the format "[1, 2, 3]"
+    :return: A list of integers [1, 2, 3]
+    """
+    # Remove brackets and split by commas
+    string = string.strip("[]")
+    if not string:
+        return []
+    return [int(x.strip()) for x in string.split(",")]
+
+
 def create_submission_csv(
     faiss_df: pd.DataFrame,
     output_path: str = "../data/submission/submission.csv",
     species_col: str = "pred_species_ids",
     save_csv: bool = False,
+    limit_top_k: Optional[int] = None,
 ):
     """
     Aggregates FAISS-predicted species IDs across 3x3 tiles and writes a submission CSV file.
@@ -139,6 +154,12 @@ def create_submission_csv(
 
     # build final DataFrame and write to CSV
     df_run = pd.DataFrame(records)
+
+    if limit_top_k is not None:
+        df_run = df_run.apply(
+            lambda x: parse_integer_list(x["species_ids"])[:limit_top_k], axis=1
+        )
+
     if save_csv:
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
