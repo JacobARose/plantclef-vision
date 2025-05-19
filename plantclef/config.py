@@ -126,6 +126,7 @@ def create_submission_csv(
     species_col: str = "pred_species_ids",
     save_csv: bool = False,
     limit_top_k: Optional[int] = None,
+    limit_top_k: Optional[int] = None,
 ):
     """
     Aggregates FAISS-predicted species IDs across 3x3 tiles and writes a submission CSV file.

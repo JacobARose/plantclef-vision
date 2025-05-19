@@ -206,6 +206,20 @@ def split_into_grid(image_array, grid_size: int = 3) -> list:
     return tiles  # Returns a list of NumPy arrays
 
 
+def select_all_tiles_from_image(df, idx: Optional[int] = None):
+    """
+    Select every row for each tile from a single image. If idx is None, select a random image.
+    """
+    all_image_names = df["image_name"].unique().tolist()
+    if idx is None:
+        image_name_query = random.sample(all_image_names, 1)
+    else:
+        image_name_query = [all_image_names[idx]]
+
+    subset_df = df[df["image_name"].isin(image_name_query)]
+    return subset_df
+
+
 def plot_image_tiles(
     df: pd.DataFrame,
     idx: int = 0,
@@ -228,7 +242,11 @@ def plot_image_tiles(
     [] [TODO] -- Add option to include axis labels with x & y resolution visible on 1 of the grid_size x grid_size tiles
     """
     # extract the first row from DataFrame
-    subset_df = df.iloc[idx, :]
+
+    subset_df = select_all_tiles_from_image(df=df, idx=idx)
+    idx = idx or 0
+    subset_df = subset_df.iloc[0, :]
+    # subset_df = df.iloc[idx, :]
     image_path = subset_df[path_col]
     image_name = subset_df["image_name"]
 
@@ -615,32 +633,32 @@ def plot_faiss_classifications(
     """
     num_tiles = grid_size**2
 
-    all_image_names = faiss_df["image_name"].unique().tolist()
-    if idx is None:
-        image_name_query = random.sample(all_image_names, 1)
-    else:
-        image_name_query = [all_image_names[idx]]
+    # all_image_names = faiss_df["image_name"].unique().tolist()
+    # if idx is None:
+    #     image_name_query = random.sample(all_image_names, 1)
+    # else:
+    #     image_name_query = [all_image_names[idx]]
 
-    subset_df = faiss_df[faiss_df["image_name"].isin(image_name_query)]
+    # subset_df = faiss_df[faiss_df["image_name"].isin(image_name_query)]
 
-    subset_df = subset_df.iloc[0, :]
-    image_path = subset_df[path_col]
-    image_name = subset_df["image_name"]
+    subset_df = select_all_tiles_from_image(df=faiss_df, idx=idx)
+
+    row = subset_df.iloc[0, :]
+    image_path = row[path_col]
+    image_name = row["image_name"]
 
     image = read_and_crop_image(image_path)
     image_tiles = split_into_grid(image, grid_size)
 
     # Extract a list of FAISS predictions (each a list of image paths) for the first `num_tiles` tiles
-    faiss_preds = faiss_df.iloc[idx : idx + num_tiles]["predictions"].to_list()
+    # faiss_preds = faiss_df.iloc[idx : idx + num_tiles]["predictions"].to_list()
+    faiss_preds = subset_df.iloc[:num_tiles]["predictions"].to_list()
 
     k = len(faiss_preds[0])  # Number of predictions per tile
 
     # Retrieve corresponding images from embs_df based on FAISS predictions
     results = []
     for tile_idx, (img_tile, pred_list) in enumerate(zip(image_tiles, faiss_preds)):
-        # tile_matches = []
-        # species_matches = []
-
         tile = ImageTileQueryResult(
             query_image_path=image_path, tile=tile_idx, tile_image=img_tile
         )
