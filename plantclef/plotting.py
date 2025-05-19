@@ -1,11 +1,15 @@
 import math
 import textwrap
 
+from dataclasses import dataclass, field
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from PIL import Image
+import PIL.Image
 from .serde import deserialize_image
 from matplotlib.font_manager import FontProperties
 
@@ -441,9 +445,80 @@ def plot_single_image_embeddings(
     plt.show()
 
 
+def read_and_crop_image(image_path: str) -> np.ndarray:
+    """
+    Read an image from a file path and crop it to a square format.
+    """
+    image = read_pil_image(image_path)
+    return crop_image_square(image)
+
+
+###################
+
+
+@dataclass
+class ImageResult:
+    def get_image_data(self, image_path: str) -> np.ndarray:
+        return read_and_crop_image(image_path)
+
+
+@dataclass
+class SimilarImage(ImageResult):
+    """Represents a single predicted similar image with its metadata."""
+
+    image_path: str
+    species_id: str
+    species: Optional[str] = None
+
+    def __post_init__(self):
+        """Validate and normalize paths."""
+        self.image_path = os.path.normpath(self.image_path)
+        if not os.path.exists(self.image_path):
+            raise ValueError(f"Image path does not exist: {self.image_path}")
+
+    @property
+    def image_data(self):
+        return self.get_image_data(self.image_path)
+
+
+@dataclass
+class ImageQueryResult(ImageResult):
+    """Represents a complete prediction result for a query image."""
+
+    query_image_path: str
+    predicted_images: List[SimilarImage] = field(default_factory=list)
+
+    def append_match(self, image: SimilarImage):
+        """Append a similar image to the list of predicted images."""
+        if not isinstance(image, SimilarImage):
+            raise ValueError("Only SimilarImage instances can be appended.")
+        self.predicted_images.append(image)
+
+    @property
+    def image_data(self):
+        return self.get_image_data(self.query_image_path)
+
+
+@dataclass
+class ImageTileQueryResult(ImageQueryResult):
+    """Represents a complete prediction result for a single tile of a query image."""
+
+    tile: int
+    tile_image: Optional[PIL.Image.Image] = None
+
+    @property
+    def tile_data(self):
+        return crop_image_square(self.tile_image)
+
+
+###################
+
+
 def plot_faiss_classifications(
     embs_df: pd.DataFrame,
     faiss_df: pd.DataFrame,
+    idx: int = 0,
+    path_col: str = "image_path",
     grid_size: int = 3,
     figsize: tuple = (20, 30),
     dpi: int = 100,
@@ -459,56 +534,67 @@ def plot_faiss_classifications(
     """
     num_tiles = grid_size**2
 
-    # Extract data from test DataFrame
-    image_data = faiss_df["data"].iloc[0]
+    subset_df = faiss_df.iloc[idx, :]
+    image_path = subset_df[path_col]
+    # image_name = subset_df["image_name"]
 
-    # Convert binary image to PIL Image
-    image = crop_image_square(deserialize_image(image_data))
+    image = read_and_crop_image(image_path)
     image_tiles = split_into_grid(image, grid_size)
 
-    # Extract FAISS predictions for the first `num_tiles` tiles
-    faiss_preds = faiss_df["predictions"].iloc[0:num_tiles].to_list()
+    # Extract a list of FAISS predictions (each a list of image paths) for the first `num_tiles` tiles
+    faiss_preds = faiss_df.iloc[idx : idx + num_tiles]["predictions"].to_list()
+
+    k = len(faiss_preds[0])  # Number of predictions per tile
 
     # Retrieve corresponding images from embs_df based on FAISS predictions
-    faiss_images = []
-    species_ids = []
-    for pred_list in faiss_preds:
-        tile_matches = []
-        species_matches = []
-        for img_name in pred_list:  # Iterate over the k predictions for each tile
-            # match = embs_df[embs_df["species_id"] == species_id]
-            # species_matches.append(match["species_id"].iloc[0])
-            match = embs_df[embs_df["image_name"] == img_name]
-            species_matches.append(match["species_id"].iloc[0])
-            if not match.empty:
-                faiss_img = crop_image_square(deserialize_image(match.iloc[0]["data"]))
-                tile_matches.append(faiss_img)
-        faiss_images.append(tile_matches)
-        species_ids.append(species_matches)
+    # faiss_images = []
+    # species_ids = []
+    results = []
+    for tile_idx, (img_tile, pred_list) in enumerate(zip(image_tiles, faiss_preds)):
+        # tile_matches = []
+        # species_matches = []
+
+        tile = ImageTileQueryResult(
+            query_image_path=image_path, tile=tile_idx, tile_image=img_tile
+        )
+        for img_path in pred_list:  # Iterate over the k predictions for each tile
+            match = embs_df[embs_df["image_path"] == img_path]
+            species_id = match["species_id"].iloc[0]
+            species = match["species"].iloc[0]
+
+            tile.append_match(
+                SimilarImage(
+                    image_path=img_path, species_id=species_id, species=species
+                )
+            )
+        results.append(tile)
 
     # Create figure with (num_tiles x k) grid (original | top-k embeddings)
-    fig, axes = plt.subplots(
-        num_tiles, len(faiss_images[0]) + 1, figsize=figsize, dpi=dpi
-    )
+    fig, axes = plt.subplots(num_tiles, len(k) + 1, figsize=figsize, dpi=dpi)
 
     if num_tiles == 1:
         axes = [axes]  # Ensure axes is iterable when only one image
 
     # Loop over image tiles and corresponding FAISS matches
-    for i, (tile, matches, species) in enumerate(
-        zip(image_tiles, faiss_images, species_ids)
-    ):
+    # for i, (tile, matches, species) in enumerate(
+    #     zip(image_tiles, faiss_images, species_ids)
+    # ):
+    for i, tile in enumerate(results):
         # Left: Original tile
-        axes[i][0].imshow(tile)
+        axes[i][0].imshow(tile.tile_data)
         axes[i][0].set_title(f"Tile {i+1}", fontsize=15)
         axes[i][0].set_xticks([])
         axes[i][0].set_yticks([])
         axes[i][0].spines[:].set_visible(False)
 
         # Right: FAISS retrieved images
-        for j, (faiss_img, species_id) in enumerate(zip(matches, species)):
-            axes[i][j + 1].imshow(faiss_img)
-            axes[i][j + 1].set_title(f"Top-{j+1}, SpeciesID: {species_id}", fontsize=12)
+        # for j, (faiss_img, species_id) in enumerate(zip(matches, species)):
+        for j, img_query_result in enumerate(tile.predicted_images):
+            axes[i][j + 1].imshow(img_query_result.image_data)
+            axes[i][j + 1].set_title(
+                f"Top-{j+1}, SpeciesID: {img_query_result.species_id}\nSpecies: {img_query_result.species}",
+                fontsize=12,
+            )
             axes[i][j + 1].set_xticks([])
             axes[i][j + 1].set_yticks([])
             axes[i][j + 1].axis("off")

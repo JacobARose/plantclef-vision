@@ -24,10 +24,16 @@ class FaissClassifier:
         # # normalize embeddings for cosine similarity
         # embs = torch.nn.functional.normalize(embs, p=2, dim=1)
 
-        idx2cls = train_df["image_name"].to_numpy()
+        # idx2cls = train_df["image_name"].to_numpy()
+        idx2cls = train_df["image_path"].to_numpy()
 
+        # embed_array = (
+        #     train_df.drop("image_name", "partition").cast(pl.Float32).to_numpy()
+        # )
         embed_array = (
-            train_df.drop("image_name", "partition").cast(pl.Float32).to_numpy()
+            train_df.drop("image_path", "image_name", "partition")
+            .cast(pl.Float32)
+            .to_numpy()
         )
         embs = torch.tensor(embed_array)
         embs = torch.nn.functional.normalize(embs, p=2, dim=1)
