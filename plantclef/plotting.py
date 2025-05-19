@@ -9,6 +9,8 @@ from PIL import Image
 from .serde import deserialize_image
 from matplotlib.font_manager import FontProperties
 
+from plantclef.datasets.image import read_pil_image
+
 bold_font = FontProperties(weight="bold")
 
 
@@ -198,7 +200,8 @@ def split_into_grid(image_array, grid_size: int = 3) -> list:
 
 def plot_image_tiles(
     df: pd.DataFrame,
-    data_col: str = "data",
+    idx: int = 0,
+    path_col: str = "image_path",
     grid_size: int = 3,
     figsize: tuple = (15, 8),
     dpi: int = 100,
@@ -206,8 +209,9 @@ def plot_image_tiles(
     """
     Display an original image and its tiles in a single figure.
 
-    :param df: DataFrame with the image data.
-    :param data_col: Name of the data column containing image bytes.
+    :param df: DataFrame with the image path data.
+    :param idx: Index of the image to display.
+    :param path_col: Name of the column containing image paths.
     :param grid_size: Number of tiles per row/column (grid_size x grid_size).
     :param figsize: Figure size (width, height).
     :param dpi: Dots per inch (image resolution).
@@ -216,12 +220,12 @@ def plot_image_tiles(
     [] [TODO] -- Add option to include axis labels with x & y resolution visible on 1 of the grid_size x grid_size tiles
     """
     # extract the first row from DataFrame
-    subset_df = df.head(1)
-    image_data = subset_df[data_col].iloc[0]
-    image_name = subset_df["image_name"].values[0]
+    subset_df = df.iloc[idx, :]
+    image_path = subset_df[path_col]
+    image_name = subset_df["image_name"]
 
     # convert binary image to PIL Image
-    image = deserialize_image(image_data)
+    image = read_pil_image(image_path)
     image = crop_image_square(image)  # Ensure a square crop
 
     # split image into tiles

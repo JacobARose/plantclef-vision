@@ -11,7 +11,7 @@ Date: Saturday Apr 19th, 2025
 
 from multiprocessing import Pool
 from typing import List, Tuple
-from PIL import Image
+import PIL.Image
 from PIL.Image import Resampling
 import numpy as np
 import torch
@@ -29,7 +29,23 @@ resampling_modes = {
 }
 
 
-def pil_to_numpy(im: Image) -> np.array:
+def read_pil_image(file_path: str, mode: str = "RGB") -> PIL.Image.Image:
+    """
+    Reads an image file and returns it as a PIL Image object.
+
+    :param
+    file_path: Path to the image file
+    :return: PIL Image object
+    """
+    try:
+        image = PIL.Image.open(file_path)
+        return image.convert(mode=mode)
+    except Exception as e:
+        print(f"Error reading image {file_path}: {e}")
+        raise e
+
+
+def pil_to_numpy(im: PIL.Image.Image) -> np.array:
     """
     Efficient utility to convert a PIL Image to a numpy array
 
@@ -38,11 +54,11 @@ def pil_to_numpy(im: Image) -> np.array:
 
     im.load()
     # unpack data
-    e = Image._getencoder(im.mode, "raw", im.mode)
+    e = PIL.Image._getencoder(im.mode, "raw", im.mode)
     e.setimage(im.im)
 
     # NumPy buffer for the result
-    shape, typestr = Image._conv_type_shape(im)
+    shape, typestr = PIL.Image._conv_type_shape(im)
     data = np.empty(shape, dtype=np.dtype(typestr))
     mem = data.data.cast("B", (data.data.nbytes,))
 
@@ -57,8 +73,8 @@ def pil_to_numpy(im: Image) -> np.array:
 
 
 def smart_resize(
-    image: Image.Image, target_height: int, target_width: int, mode: str = "nearest"
-) -> Image.Image:
+    image: PIL.Image.Image, target_height: int, target_width: int, mode: str = "nearest"
+) -> PIL.Image.Image:
     """
     Resizes an image to the target dimensions while maintaining aspect ratio.
     Pads the image with black (zero) pixels to fit the target dimensions if necessary.
@@ -80,7 +96,7 @@ def smart_resize(
     resized_image = image.resize((new_width, new_height), resampling_modes[mode])
 
     # Create a new black (zero) image with the target dimensions
-    new_image = Image.new("RGB", (target_width, target_height), (0, 0, 0))
+    new_image = PIL.Image.new("RGB", (target_width, target_height), (0, 0, 0))
 
     # Calculate the position to center the resized image
     top_left_x = (target_width - new_width) // 2
@@ -108,7 +124,7 @@ def parse_image(
     """
     try:
         # Open the image
-        image = Image.open(file_path)
+        image = PIL.Image.open(file_path)
 
         # Apply smart_resize
         resized_image = smart_resize(image, target_height, target_width, mode)
@@ -125,7 +141,7 @@ def resize_images_in_parallel(
     target_width: int,
     mode: str = "nearest",
     num_workers: int = 4,
-) -> List[Tuple[str, Image.Image]]:
+) -> List[Tuple[str, PIL.Image.Image]]:
     """
     Maps the smart_resize function to a list of image file paths in parallel using multiprocessing.Pool.imap.
 
@@ -168,7 +184,7 @@ def parse_image_dimensions(file_path: str) -> Tuple[str, int, int]:
     :return: A tuple containing the file path, height, and width of the image
     """
     try:
-        with Image.open(file_path) as img:
+        with PIL.Image.open(file_path) as img:
             width, height = img.size
         return file_path, width, height
     except Exception as e:
