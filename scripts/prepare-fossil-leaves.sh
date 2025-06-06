@@ -63,7 +63,8 @@ IFS=' ' read -r -a ZIP_FILES <<< "${ZIP_GROUPS[$GROUP_NAME]}"
 echo "Processing the following files from group '$GROUP_NAME':"
 for ZIP_FILE in "${ZIP_FILES[@]}"; do
     echo "  - $ZIP_FILE"
-    unzip -q "$SOURCE_DIR/$ZIP_FILE" -d "$TARGET_DIR" | pv -lep -s $(unzip -l "$SOURCE_DIR/$ZIP_FILE" | awk '/-----/ {getline; print $1}') > /dev/null
+    # unzip -q "$SOURCE_DIR/$ZIP_FILE" -d "$TARGET_DIR" | pv -lep -s $(unzip -l "$SOURCE_DIR/$ZIP_FILE" | awk '/-----/ {getline; print $1}') > /dev/null
+    unzip "$SOURCE_DIR/$ZIP_FILE" -d "$TARGET_DIR" | pv -l > /dev/null
 done
 
 
